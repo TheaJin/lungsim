@@ -215,7 +215,8 @@ contains
 !    call export_terminal_solution(TERMINAL_EXNODEFILE,'terminals')
 
     call enter_exit(sub_name,2)
-
+   ! print *, "unit_field", unit_field(1:10, 1)
+    !read(*,*)
   end subroutine evaluate_vent
 
 !!!#############################################################################
@@ -293,6 +294,11 @@ contains
     call update_resistance  !update element lengths, volumes, resistances
     call tissue_compliance(chest_wall_compliance,undef) ! unit compliances
     totalc = SUM(unit_field(nu_comp,1:num_units)) !the total model compliance
+
+    !----------------------------------
+    !print *, "total_c", totalc
+    !------------------------------------
+
     call update_proximal_pressure ! pressure at proximal nodes of end branches
     call calculate_work(current_vol-init_vol,current_vol-last_vol,WOBe,WOBr, &
          pptrans)!calculate work of breathing
@@ -422,12 +428,19 @@ contains
     do nunit = 1,num_units
        ne = units(nunit)
        np1 = elem_nodes(1,ne)
+       !print *, "units", units(1:10)
+       ! read(*, *)
        ! linear estimate
        est = (node_field(nj_aw_press,np1) &
             - unit_field(nu_air_press,nunit))/dt
 !!!    For stability, weight new estimate with the previous dP/dt
        unit_field(nu_dpdt,nunit) = 0.5_dp*(est+unit_field(nu_dpdt,nunit))
     enddo !nunit
+    !---------- what is this? --------------
+    !print *, "nunit", nunit ! = 30677
+    !print *, "ne", ne ! = 61360
+    !print *, "np1", np1 ! = 61345
+    !----------------------------
 
     call enter_exit(sub_name,2)
 
@@ -452,6 +465,10 @@ contains
     do nunit = 1,num_units
        ne = units(nunit)
        np1 = elem_nodes(1,ne)
+
+       !print *, "ne", ne = 61360
+       !print *, "np1", np1 = 61345
+
 !!!    store the entry node pressure as an elastic unit air pressure
        unit_field(nu_air_press,nunit) = node_field(nj_aw_press,np1) 
     enddo !noelem
@@ -486,6 +503,7 @@ contains
     enddo !noelem
     ppl_current = ppl_current/num_units
 
+    ! print *, "np2", np2 = 61361
     call enter_exit(sub_name,2)
 
   end subroutine update_pleural_pressure
@@ -519,6 +537,7 @@ contains
        node_field(nj_aw_press,np2) = node_field(nj_aw_press,np1) &
             - (elem_field(ne_resist,ne)*elem_field(ne_Vdot,ne))* &
             dble(elem_ordrs(no_type,ne))
+       !write(*,*) "node"! node_field(nj_aw_press,np2)
     enddo !noelem
 
     call enter_exit(sub_name,2)
@@ -554,13 +573,35 @@ contains
        unit_field(nu_comp,nunit) = cc*exp_term/6.0_dp*(3.0_dp*(3.0_dp*a+b)**2 &
             *(lambda**2-1.0_dp)**2/lambda**2+(3.0_dp*a+b) &
             *(lambda**2+1.0_dp)/lambda**4)
+
+       !-------------
+       print *, 'Tissue compliance: ', unit_field(nu_comp,nunit)
+       !------------------------------
+
        unit_field(nu_comp,nunit) = undef/unit_field(nu_comp,nunit) ! V/P
+
+       !-------------
+       !print *, 'Read unit_field(nu_comp,nunit): ', unit_field(nu_comp,nunit)
+
+       !unit_field(nu_comp,nunit) = 1.0_dp/(1.0_dp/unit_field(nu_comp,nunit)&
+       !     +1.0_dp/(chest_wall_compliance/dble(num_units)))
+
+       !------------------------------
+
        ! add the chest wall (proportionately) in parallel
        unit_field(nu_comp,nunit) = 1.0_dp/(1.0_dp/unit_field(nu_comp,nunit)&
             +1.0_dp/(chest_wall_compliance/dble(num_units)))
+       !-------------
+       print *, 'total lung compliance: ', unit_field(nu_comp,nunit)
+       !------------------------------
        !estimate an elastic recoil pressure for the unit
        unit_field(nu_pe,nunit) = cc/2.0_dp*(3.0_dp*a+b)*(lambda**2.0_dp &
             -1.0_dp)*exp_term/lambda
+        !-------------
+       print *, 'elastic recoil pressure: ', unit_field(nu_pe,nunit)
+       !print *, 'num_unit', num_units
+       !------------------------------
+
     enddo !nunit
 
     call enter_exit(sub_name,2)
@@ -1057,6 +1098,7 @@ contains
        nodes(nonode)=np !set local node number same as order in node list
     enddo !nonode
 
+    ! node_xyz(coordinate_dim, node_number)
     node_xyz(3,2) = -100.0_dp !setting the z coordinate of node 2
     node_xyz(2,3) = -50.0_dp !setting the y coordinate of node 3
     node_xyz(2,4) = 50.0_dp !setting the y coordinate of node 4
