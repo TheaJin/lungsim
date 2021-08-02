@@ -218,14 +218,14 @@ contains
     call set_driving_pressures(dP_muscle,dt,Pcw,P_muscle,P_muscle_peak, &
          P_recoil,P_residual,Texpn,Tinsp,ttime)
     prev_flow = elem_field(ne_Vdot,1)
-    
+
 !!! Solve for a new flow and pressure field
 !!! We will estimate the flow into each terminal lumped
 !!! parameter unit (assumed to be an acinus), so we can calculate flow
 !!! throughout the rest of the tree simply by summation. After summing
 !!! the flows we can use the resistance equation (P0-P1=R1*Q1) to update
 !!! the pressures throughout the tree.
-    
+
     !initialise Qinit to the previous flow
     elem_field(ne_Vdot0,1:num_elems) = elem_field(ne_Vdot,1:num_elems)
     converged = .FALSE.
@@ -247,7 +247,7 @@ contains
        call update_node_pressures(P_residual) ! updates the pressures at nodes
        call update_unit_dpdt(dt) ! update dP/dt at the terminal units
     enddo !converged
-    
+
     call update_unit_volume(dt) ! Update tissue unit volumes, unit tidal vols
     call volume_of_mesh(current_vol,volume_tree) ! calculate mesh volume
     call update_elem_field(1.0_dp)
@@ -259,7 +259,7 @@ contains
          P_transp)!calculate work of breathing
     last_vol=current_vol
     Pcw = (chestwall_restvol - current_vol)/lung_mechanics%chest_wall_compliance
-    
+
     ! increment the tidal volume, or the volume expired
     if(elem_field(ne_Vdot,1).gt.0.0_dp)then
        sum_tidal = sum_tidal+elem_field(ne_Vdot,1)*dt
@@ -281,7 +281,7 @@ contains
   subroutine evaluate_uniform_flow
     !*evaluate_uniform_flow:* Sets up and solves uniform ventilation model
   !DEC$ ATTRIBUTES DLLEXPORT,ALIAS:"SO_EVALUATE_UNIFORM_FLOW" :: EVALUATE_UNIFORM_FLOW
-  
+
     ! Local variables
     integer :: ne,nunit
     real(dp) :: init_vol,volume_tree
@@ -323,14 +323,14 @@ contains
     ! Local variables
     real(dp) :: mu
     character(len=60) :: sub_name
-    
+
     ! --------------------------------------------------------------------------
 
     sub_name = 'set_driving_pressures'
     call enter_exit(sub_name,1)
 
     select case(ventilation_values%expiration_type)
-       
+
     case('active')
        if(ttime.lt.Tinsp)then
           dP_muscle = ventilation_values%P_muscle_estimate* &
@@ -342,7 +342,7 @@ contains
                sin(2.0_dp*pi*(0.5_dp+(ttime-Tinsp)/(2.0_dp*Texpn)))/ &
                (2.0_dp*Texpn)*dt
        endif
-       
+
     case('passive')
        if(ttime.le.Tinsp+0.5_dp*dt)then
           mu = -0.5_dp/(log(1.2_dp*98.0665_dp/(-ventilation_values%P_muscle_estimate * &
@@ -358,7 +358,7 @@ contains
           mu = -0.5_dp/(log(1.2_dp*98.0665_dp/(-P_muscle_peak)))
           dP_muscle = P_muscle_peak * exp(-(ttime-Tinsp)/mu) - P_muscle
        endif
-       
+
     end select
 
     P_muscle = P_muscle + dP_muscle !current value for muscle pressure
@@ -419,7 +419,7 @@ contains
        ne = units(nunit)
        np1 = elem_nodes(1,ne)
 !!!    store the entry node pressure as an elastic unit air pressure
-       unit_field(nu_air_press,nunit) = node_field(nj_aw_press,np1) 
+       unit_field(nu_air_press,nunit) = node_field(nj_aw_press,np1)
     enddo !noelem
 
     call enter_exit(sub_name,2)
@@ -624,9 +624,9 @@ contains
        elem_field(ne_vol,ne) = PI * elem_field(ne_radius,ne)**2 * &
             elem_field(ne_length,ne)
     enddo ! ne
-    
+
     call enter_exit(sub_name,2)
-    
+
   end subroutine update_elem_field
 
 !!!#############################################################################
@@ -647,28 +647,28 @@ contains
 
     elem_field(ne_t_resist,1:num_elems) = 0.0_dp
 
-    tissue_resistance = 0.0_dp  ! 0.35_dp * 98.0665_dp/1.0e6_dp 
+    tissue_resistance = 0.0_dp  ! 0.35_dp * 98.0665_dp/1.0e6_dp
 
     do nunit = 1,num_units
        ne = units(nunit)
        elem_field(ne_t_resist,ne) = tissue_resistance * dble(elem_units_below(1))
     enddo
-    
+
     do ne = 1,num_elems
        np1 = elem_nodes(1,ne)
        np2 = elem_nodes(2,ne)
-       
+
        le = elem_field(ne_length,ne)
        rad = elem_field(ne_radius,ne)
 
-       ! element Poiseuille (laminar) resistance in units of Pa.s.mm-3   
+       ! element Poiseuille (laminar) resistance in units of Pa.s.mm-3
        resistance = 8.0_dp*fluid_param%air_viscosity*elem_field(ne_length,ne)/ &
             (PI*elem_field(ne_radius,ne)**4) !laminar resistance
-       
+
        ! element turbulent resistance (flow in bifurcating tubes)
        gamma = 0.357_dp !inspiration
        if(elem_field(ne_Vdot,ne).lt.0.0_dp) gamma = 0.46_dp !expiration
-       
+
        reynolds = abs(elem_field(ne_Vdot,ne)*2.0_dp*fluid_param%air_density/ &
             (pi*elem_field(ne_radius,ne)*fluid_param%air_viscosity))
        zeta = MAX(1.0_dp,dsqrt(2.0_dp*elem_field(ne_radius,ne)* &
@@ -677,7 +677,7 @@ contains
        elem_field(ne_t_resist,ne) = elem_field(ne_resist,ne) + &
             elem_field(ne_t_resist,ne)
     enddo !noelem
-    
+
     do ne = num_elems,1,-1
        sum = 0.0_dp
        if(elem_cnct(1,0,ne).gt.0)then !not terminal
@@ -744,7 +744,7 @@ contains
             err_est = err_est+flow_diff**2 !sum up the error for all elements
        if(abs(unit_field(nu_Vdot0,nunit)).gt.zero_tol) &
             flow_sum = flow_sum+unit_field(nu_Vdot0,nunit)**2
-       
+
 
 !!! ARC: DO NOT CHANGE BELOW. THIS IS NEEDED FOR THE ITERATIVE STEP
 !!! - SIMPLER OPTIONS JUST FORCE IT TO CONVERGE WHEN ITS NOT
@@ -928,7 +928,7 @@ contains
     write(*,'('' Total Work of Breathing ='',F7.3,''J/min'')')WOB_insp
     write(*,'('' elastic WOB ='',F7.3,''J/min'')')WOBe_insp
     write(*,'('' resistive WOB='',F7.3,''J/min'')')WOBr_insp
-          
+
     call enter_exit(sub_name,2)
 
   end subroutine write_end_of_breath
@@ -953,7 +953,7 @@ contains
     totalC = 1.0_dp/(1.0_dp/sum(unit_field(nu_comp,1:num_units))+ &
          1.0_dp/lung_mechanics%chest_wall_compliance)
     Precoil = sum(unit_field(nu_pe,1:num_units))/num_units
-    
+
     if(abs(time).lt.zero_tol)then
 !!! write out the header information for run-time output
        write(*,'(2X,''Time'',3X,''Inflow'',4X,''V_t'',5X,''Raw'',5X,&
@@ -962,7 +962,7 @@ contains
        write(*,'(3X,''(s)'',4X,''(mL/s)'',3X,''(mL)'',1X,''(cmH/L.s)'',&
             &1X,''(L/cmH)'',1X,''(...cmH2O...)'',&
             &4X,''(L)'',5X,''(......cmH2O.......)'')')
-       
+
        write(*,'(F7.3,2(F8.1),8(F8.2))') &
             0.0_dp,0.0_dp,0.0_dp, &  !time, flow, tidal
             elem_field(ne_t_resist,1)*1.0e+6_dp/98.0665_dp, & !res (cmH2O/L.s)
@@ -1008,7 +1008,7 @@ contains
             P_muscle/98.0665_dp, & !Pmuscle (cmH2O)
             -Pcw/98.0665_dp, & !Pchest_wall (cmH2O)
             (P_muscle+Pcw)/98.0665_dp !Pmuscle - Pchest_wall (cmH2O)
-       
+
     endif
 
     call enter_exit(sub_name,2)
