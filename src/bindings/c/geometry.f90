@@ -276,7 +276,8 @@ contains
 !###################################################################################
 !
 
-  subroutine define_rad_from_file_c(FIELDFILE, filename_len, radius_type, radius_type_len) bind(C, name="define_rad_from_file_c")
+  subroutine define_rad_from_file_c(FIELDFILE, filename_len, constant_scale, radius_type, radius_type_len) &
+    bind(C, name="define_rad_from_file_c")
 
     use iso_c_binding, only: c_ptr
     use utils_c, only: strncpy
@@ -287,14 +288,15 @@ contains
     integer,intent(in) :: filename_len, radius_type_len
     type(c_ptr), value, intent(in) :: FIELDFILE, radius_type
     character(len=MAX_FILENAME_LEN) :: filename_f, radius_type_f
+    real(dp),intent(in) :: constant_scale
 
     call strncpy(filename_f, FIELDFILE, filename_len)
     call strncpy(radius_type_f, radius_type, radius_type_len)
 
 #if defined _WIN32 && defined __INTEL_COMPILER
-    call so_define_rad_from_file(filename_f, radius_type_f)
+    call so_define_rad_from_file(filename_f, constant_scale, radius_type_f)
 #else
-    call define_rad_from_file(filename_f, radius_type_f)
+    call define_rad_from_file(filename_f, constant_scale, radius_type_f)
 #endif
 
     end subroutine define_rad_from_file_c

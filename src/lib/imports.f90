@@ -61,7 +61,6 @@ contains
    call sum_elem_field_from_periphery(ne_Vdot) !sum the air flows recursively UP the tree
    maxflow = elem_field(ne_Vdot,1)
 
-
    call enter_exit(sub_name,2)
  end subroutine import_ventilation
 
@@ -131,6 +130,10 @@ contains
        if(flow.lt.0.0_dp) flow = zero_tol
          elem_field(field_no,ne) = flow! read it in
        end if
+
+!     if (ne .eq. ne+1)
+!       print *, "ERROR: Refined element number does not match with mesh."
+!     call exit(0)
        if(ne.ge.num_elems) exit read_elem_flow
      end do read_elem_flow
 

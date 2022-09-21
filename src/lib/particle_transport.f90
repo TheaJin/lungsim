@@ -91,10 +91,7 @@ contains
     !Set up parameters, NB any of these parameters could be passed from python in the long term
     part_param%num_brths_gm = 23!TJ TEMP 23
     part_param%solve_tolerance = 1.0e-8_dp
-    part_param%diffusion_coeff = 22.5_dp
-    !part_param%pdia = 0.4e-5_dp
-    !part_param%pdia = 1.0_dp * 1.0e-3_dp  ! micron --> mm
-    !part_param%pdia = 5.0_dp * 1.0e-3_dp  ! micron --> mm
+    part_param%diffusion_coeff = 22.5_dp ! mm
     part_param%pdia = particle_size * 1.0e-3_dp  ! micron --> mm
     part_param%dt_gm = 0.02_dp
     part_param%VtotTLC = 186.89_dp
@@ -157,17 +154,24 @@ contains
     part_param%time_expiration = 2.0_dp
     part_param%tidal_volume = volume_target! tidal volume target, mm^3
     part_param%FRC = FRC
-    part_param%initial_volume =FRC*1.0e+6_dp !initial volume of air in lungs
+    part_param%initial_volume = FRC*1.0e+6_dp !initial volume of air in lungs, mm^3
 
-    call set_elem_volume() 
+    call set_elem_volume()
+
+    ! TJ - use this volume_of_mesh() to get deadspace volume
     call volume_of_mesh(part_param%initial_volume,volume_tree) ! to get deadspace volume
+    ! TJ - NOW part_param%initial_volume = volume_tree = deadspace volume
+
+    ! TJ - TO scale deadspace volume, go to volume_of_mesh() in geometry.f90
 
 !!! distribute the initial tissue unit volumes along the gravitational axis.
     call set_initial_volume(Gdirn,COV,FRC*1.0e+6_dp,RMaxMean,RMinMean)
     undef = refvol * (FRC*1.0e+6_dp-volume_tree)/DBLE(elem_units_below(1))
 
 !!! calculate the total model volume
-    call volume_of_mesh(part_param%initial_volume,volume_tree)
+    ! TJ - use this volume_of_mesh to reset initial volume to FRC, comment set_initial_volume() in .py
+    call volume_of_mesh(part_param%initial_volume, volume_tree)
+
 
     write(*,'('' Anatomical deadspace = '',F8.3,'' ml'')') volume_tree/1.0e+3_dp ! in mL
     write(*,'('' Respiratory volume   = '',F8.3,'' L'')') (part_param%initial_volume-volume_tree)/1.0e+6_dp !in L
@@ -175,11 +179,8 @@ contains
     write(*,'('' Inlet flow           = '',f8.3,'' L.s^-1'')') abs(elem_field(ne_Vdot,1))/1.0e+6_dp
     write(*,'('' Inlet concentration  = '',f8.3,'' g.mm^-3'')') node_field(nj_conc1,1)
     write(*,'('' Particle size        = '',f8.3,'' micron m^-3'')') (part_param%pdia * 1.0e+3_dp)
-
+    pause
      op_name = 'file_particle' !ARC TEMP placeholder
-    ! print *, 'op_name is', op_name
-     
-
 
      !!! ###########  INITIAL & BOUNDARY CONDITIONS FOR GAS MIXING & EXCHANGE   ###########
      ! sets initial concentration at all nodes, concentration at the inlet node
@@ -194,6 +195,12 @@ contains
      !      part_param%tidal_volume +1.0_dp)
      !   read(*,*)
      !endif
+
+    ! extra thoracic airway
+
+    ! something with concentration
+
+
 
     time_end = 0.0_dp
     time_start = 0.0_dp
@@ -218,7 +225,7 @@ contains
 !###########################################################
     !do nbreath = 1, part_param%num_brths_gm!1!ARC TEMP
 !###########################################################
-       do nbreath = 1,1
+    do nbreath = 1,1
 !!! Inspiration
      inlet_flow = abs(elem_field(ne_Vdot,1))
      call scale_flow_field(inlet_flow)
@@ -234,8 +241,6 @@ contains
 
      call solve_particles(fileid,time_end,time_start,.true.,last_breath,tp,part_param,write_mass)
      nstep = nbreath
-!     write(*,*) 'nstep',nstep
-!
 !
 !!! Breath Hold
 !!----------------
@@ -305,7 +310,7 @@ contains
     logical,intent(in) :: inspiration,last_breath,write_mass
 
     real(dp) :: err
-!   character(len=9) :: problem_type = 'particles'
+
     ! Local variables
     real(dp),allocatable :: solution(:)
 
@@ -332,8 +337,6 @@ contains
     groupname = 'vent_model'
     field_name = 'bronchial_deposition'
     ne_field = 13
-
-
 
     sub_name = 'solve_particles'
     call enter_exit(sub_name,1)
@@ -527,18 +530,9 @@ contains
 
     call write_terminal('terminal', name)
     call write_airway(ne_field, 'airway_result', groupname, field_name)
-    !print *, "alter", unit_wall/(unit_mass + unit_wall)
 
     call enter_exit(sub_name,2)
   end subroutine solve_particles
-  
-
-
-
-
-  ! --------------------------- move ventilation here ------------------------------------------
-
-
 
 
 
@@ -562,7 +556,8 @@ contains
             real(dp) :: midpoint(3)
             logical :: CHANGED
             character(len=300) :: writefile
-            character(len=60) :: sub_name, groupname, field_name, filename
+            character :: sub_name, groupname, field_name
+        character :: filename*(*)
         character(LEN=10) :: lobe
         integer :: ifile=10
         character :: readfile*150
@@ -600,14 +595,14 @@ contains
                 lobe = 'Trachea' !'copious free time'
           end select
 
-          write(10,'(I6, 4(F10.2),  2(I5), 2x, A5, 2(F7.3), 6(D11.3))') &
+          write(10,'(I6, 4(F10.2),  2(I5), 2x, A5, 2(F7.3), 7(D11.3))') &
                   ne, (node_xyz(:, np1) + node_xyz(:, np2))/2, &
                   sqrt(sum((midpoint(:) - node_xyz(:, np0))**2)), & ! distance
                   elem_ordrs(1,ne), elem_ordrs(2,ne), lobe, elem_field(ne_length,ne), &
                   elem_field(ne_radius,ne), elem_field(ne_flow,ne), elem_field(ne_mass,ne), &
                   node_field(nj_loss_dif, ne), node_field(nj_loss_imp, ne), &
                   node_field(nj_loss_sed, ne), & ! alveolar dep mass by sed
-                  node_field(nj_conc1, ne) ! concentration
+                  node_field(nj_conc1, ne) , elem_field(ne_part_vel,ne) ! concentration, vp
         end do
         close(ifile)
     end subroutine write_airway
@@ -672,11 +667,11 @@ contains
 
           ! TJ - find the concentration array!
 
-          write(10,'(I6, 3(f10.2), f10.2, A7, f8.3, f10.2, 3(D11.3))') &
+          write(10,'(I6, 3(f10.2), f10.2, A7, f8.3, f10.2, 4(D11.3))') &
                   np, (node_xyz(:,np)), sqrt(sum((node_xyz(:, np) - node_xyz(:, np0))**2)), &  ! distance
                   lobe, unit_field(nu_vol,nolist), unit_field(nu_vdot0,nolist), &
                   unit_field(nu_vol,nolist)*unit_field(nu_conc1,nolist), &
-                  unit_field(nu_loss_dif, nolist), unit_field(nu_loss_sed, nolist)
+                  unit_field(nu_loss_dif, nolist), unit_field(nu_loss_sed, nolist), elem_field(ne_part_vel,ne)
 
           !write(10,'(1X,''Lobe: '', A10)') lobe !element_lobe(ne)
         end do!nolist
@@ -1394,7 +1389,7 @@ contains
        if(abbr.gt.-25.0_dp) elem_field(ne_part_vel,ne)=elem_field(ne_part_vel,ne) &
                                                           + rel_flow*exp(abbr)
 
-!!! calculate spatial derivative of particle velocity
+!!! calculate spatial derivative of particle/ velocity
 !       elem_field(ne_dpart_vel,ne) = 0.0_dp !(XP(nk,nv2,nej_flow,np2)/XP(1,nv2,nj_radius,np2)**2 &
 !            -XP(nk,nv,nej_flow,np)/XP(1,nv2,nj_radius,np)**2 )/elem_field(ne_length,ne)/PI    ! spatial derivative of particle velocity
 !       XP(2,nv2,nej_flow,np2) = (XP(nk,nv,nej_flow,np)/XP(1,nv2,nj_radius,np)**2 &
@@ -2222,9 +2217,9 @@ contains
 
 !!! calculate the total model volume
     call volume_of_mesh(current_volume,tree_volume)
-    
+
+    ! TJ - FINAL total_volume_change equals tidal volume (target volume)
     tp%total_volume_change = current_volume-part_param%initial_volume
-    
 
     call enter_exit(sub_name,2)
 

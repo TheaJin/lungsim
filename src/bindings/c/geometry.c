@@ -15,7 +15,7 @@ void define_data_geometry_c(const char *DATAFILE, int *filename_len);
 void group_elem_parent_term_c(int *ne_parent);
 void make_data_grid_c(int *surface_elems, double *spacing, int *to_export, const char *filename, int *filename_len, const char *groupname, int *groupname_len);
 extern void make_2d_vessel_from_1d_c(int *elemlist_len, int elemlist[]);
-void define_rad_from_file_c(const char *FIELDFILE, int *filename_len, const char *radius_type, int *radius_type_len);
+void define_rad_from_file_c(const char *FIELDFILE, int *filename_len, double *constant_scale, const char *radius_type, int *radius_type_len);
 int get_local_node_f_c(const char *ndimension, int *dimension_len, const char *np_global, int *np_global_len);
 void define_rad_from_geom_c(const char *order_system, int *order_system_len, double *control_param,
                             const char *start_from, int *start_from_len, double *start_rad,
@@ -99,11 +99,11 @@ void make_2d_vessel_from_1d(int elemlist_len, int elemlist[])
   make_2d_vessel_from_1d_c(elemlist, &elemlist_len);
 }
 
-void define_rad_from_file(const char *FIELDFILE, const char *radius_type)
+void define_rad_from_file(const char *FIELDFILE, double constant_scale, const char *radius_type)
 {
   int filename_len = (int)strlen(FIELDFILE);
   int radius_type_len = (int)strlen(radius_type);
-  define_rad_from_file_c(FIELDFILE, &filename_len, radius_type, &radius_type_len);
+  define_rad_from_file_c(FIELDFILE, &filename_len, &constant_scale, radius_type, &radius_type_len);
 }
 
 int get_local_node_f(const char *ndimension, const char *np_global)

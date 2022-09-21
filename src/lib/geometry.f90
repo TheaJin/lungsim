@@ -2339,8 +2339,8 @@ contains
   end subroutine merge_trifurcations
 
 !!!#############################################################################
-
-  subroutine define_rad_from_file(FIELDFILE, radius_type_in)
+    subroutine define_rad_from_file(FIELDFILE, constant_scale, radius_type_in)
+  !subroutine define_rad_from_file(FIELDFILE, radius_type_in )!, constant_scale)
     !*define_rad_from_file:* reads in a radius field associated with an 
     ! airway tree and assigns radius information to each element, also 
     ! calculates volume of each element
@@ -2348,6 +2348,7 @@ contains
 
     character(len=MAX_FILENAME_LEN), intent(in) :: FIELDFILE
     character(len=MAX_STRING_LEN), optional ::  radius_type_in
+    real(dp) :: constant_scale != 1.0_dp
     !     Local Variables
     integer :: ierror,ne,ne_counter,ne_global,np,np1,np2,np_global, &
          num_elem_rad,surround
@@ -2478,6 +2479,7 @@ contains
                 read(unit=10, fmt="(a)", iostat=ierror) ctemp1
                 if(index(ctemp1, "value")> 0) then
                    radius = get_final_real(ctemp1)
+                   radius = radius * constant_scale
                    elem_field(ne_radius,ne) = radius
                    elem_field(ne_radius_in,ne) = radius
                    elem_field(ne_radius_out,ne) = radius
@@ -3321,12 +3323,11 @@ contains
     volume_of_tree = 0.0_dp
     
     call volume_of_mesh(volume_estimate,volume_of_tree)
-    
     random_number=-1.1_dp
     
     Vmax = Rmax * (total_volume-volume_of_tree)/elem_units_below(1)
     Vmin = Rmin * (total_volume-volume_of_tree)/elem_units_below(1)
-    
+
 !!! for each elastic unit find the maximum and minimum coordinates in the Gdirn direction
     max_z=-1.0e+6_dp
     min_z=1.0e+6_dp
@@ -3354,12 +3355,13 @@ contains
     
     ! correct unit volumes such that total volume is exactly as specified
     call volume_of_mesh(volume_estimate,volume_of_tree)
+
     factor_adjust = (total_volume-volume_of_tree)/(volume_estimate-volume_of_tree)
     do nunit=1,num_units
        unit_field(nu_vol,nunit) = unit_field(nu_vol,nunit)*factor_adjust
     enddo
-    call volume_of_mesh(volume_estimate,volume_of_tree)
-    
+    call volume_of_mesh(volume_estimate, volume_of_tree)
+
     write(*,'('' Number of elements is '',I5)') num_elems
     write(*,'('' Initial volume is '',F6.2,'' L'')') volume_estimate/1.0e+6_dp
     write(*,'('' Deadspace volume is '',F6.1,'' mL'')') volume_of_tree/1.0e+3_dp
@@ -3405,11 +3407,13 @@ contains
        vol_below(ne0) = vol_below(ne0) + dble(elem_symmetry(ne))*dble(elem_ordrs(no_type,ne))*vol_below(ne)
     enddo !noelem
 
-    elem_field(ne_vd_bel,:) = vol_anat(:)
+    ! TJ - scale factor to change deadspace volume!
+    elem_field(ne_vd_bel,:) = vol_anat(:) !* 0.87
     elem_field(ne_vol_bel,:) = vol_below(:)
     volume_model = elem_field(ne_vol_bel,1)
-    volume_tree = elem_field(ne_vd_bel,1)
 
+    volume_tree = elem_field(ne_vd_bel,1)
+    !print *, 'volume tree', volume_tree
     deallocate(vol_anat)
     deallocate(vol_below)
     

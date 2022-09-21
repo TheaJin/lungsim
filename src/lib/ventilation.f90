@@ -116,13 +116,19 @@ contains
     call update_elem_field(1.0_dp)
     call update_resistance
     call volume_of_mesh(init_vol,volume_tree)
-    
+    !print *, 'volume_tree', volume_tree
+
 !!! distribute the initial tissue unit volumes along the gravitational axis.
     call set_initial_volume(gdirn,COV,FRC*1.0e+6_dp,RMaxMean,RMinMean)
     undef = refvol * (FRC*1.0e+6_dp-volume_tree)/dble(elem_units_below(1))
+    !print *, 'volume_tree 2', volume_tree
 
 !!! calculate the total model volume
     call volume_of_mesh(init_vol,volume_tree)
+
+    ! TJ - Change deadspace volume by 87% (test
+    volume_tree = volume_tree * 0.87_dp
+    print *, 'volume_tree 3', volume_tree
 
     write(*,'('' Anatomical deadspace = '',F8.3,'' ml'')') &
          volume_tree/1.0e+3_dp ! in mL

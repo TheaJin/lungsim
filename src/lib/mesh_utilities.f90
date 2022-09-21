@@ -909,6 +909,8 @@ contains
     generation = elem_ordrs(1,ne)
     length = elem_field(ne_length,ne)
     ne0 = elem_cnct(-1,1,ne)
+    !print *, 'ne0', ne0
+    !pause
     continue = .true.
     if(ne0.eq.0.or.elem_ordrs(1,ne0).ne.generation) continue = .false.
 
