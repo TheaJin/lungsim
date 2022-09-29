@@ -82,6 +82,7 @@ contains
     logical :: write_mass = .false.
     character(len=4) :: char_int
     character(len=MAX_FILENAME_LEN) :: file_export
+    real(dp) :: Eo
 
 
     sub_name = 'solve_particle_decoupled'
@@ -114,7 +115,7 @@ contains
     Ccun = 1.0_dp + 2.0_dp * part_param%lambda/part_param%pdia &
          * (1.257_dp+0.4_dp*exp(-0.55_dp*part_param%pdia/part_param%lambda))
     part_param%diffu = part_param%kBoltz*part_param%Temperature*Ccun/&
-            (3.0_dp*pi*part_param%mu*part_param%pdia) ! diffusion constant [mm^1/s]
+            (3.0_dp*pi*part_param%mu*part_param%pdia) ! diffusion constant [mm^2/s]
 
 
     call read_params_evaluate_flow(Gdirn, chest_wall_compliance, &
@@ -179,7 +180,9 @@ contains
     write(*,'('' Inlet flow           = '',f8.3,'' L.s^-1'')') abs(elem_field(ne_Vdot,1))/1.0e+6_dp
     write(*,'('' Inlet concentration  = '',f8.3,'' g.mm^-3'')') node_field(nj_conc1,1)
     write(*,'('' Particle size        = '',f8.3,'' micron m^-3'')') (part_param%pdia * 1.0e+3_dp)
-    pause
+    !write(*,'('' Particle size        = '',f10.7,'' mm^-3'')') (part_param%pdia)
+    write(*,'('' Diffusion constant   = '',f8.3,'' mm^2.s^-1'')') (part_param%diffu * 1.0e+3_dp)
+
      op_name = 'file_particle' !ARC TEMP placeholder
 
      !!! ###########  INITIAL & BOUNDARY CONDITIONS FOR GAS MIXING & EXCHANGE   ###########
@@ -196,9 +199,26 @@ contains
      !   read(*,*)
      !endif
 
-    ! extra thoracic airway
-
+    !!! TJ - write part
+    ! M1: ICRP Method:
     ! something with concentration
+    !Eo = 1- 1/(1+1.1_dp*1e-4*(da**2* Q**0.6 *VT**(-0.2))**1.4)
+    Eo = 0.0_dp
+    if (particle_size .le. 0.2_dp) then
+        Eo = 1.0_dp-EXP(-12.65_dp*(part_param%diffu/100.0_dp)**0.5_dp * (elem_field(ne_Vdot,1)*0.06_dp)**(-0.125_dp))
+    else
+        Eo = 1.0_dp - 1.0_dp/((1.0_dp+1.1_dp*1.0e-4_dp*(particle_size**2* (elem_field(ne_Vdot,1))/1.0e+3_dp)**0.6_dp * &
+            (part_param%tidal_volume/1.0e+3_dp)**(-0.2_dp))**1.4_dp)
+    endif
+    write(*,'('' Extrathoracic deposition   = '',f8.5,'' '')') Eo
+
+
+    pause
+    !M2: Cheng 2003
+    ! TJ - extra thoracic airway (Cheng, 2003), D = 0.022 cm^2/s
+    ! D_B = 0.037 cm^2/s
+    ! 1 - exp(-0.000278_dp*(da**2)*Q - 20.4_dp*D**0.66*Q**(-0.31))
+
 
 
 
