@@ -93,6 +93,7 @@ module arrays
     real(dp) :: total_volume_change
     real(dp) :: inlet_concentration(3)!currently hardcoded to up to three different materials
     real(dp) :: initial_concentration(3)
+    !real(dp) :: inlet_mouth_concentration(3) ! currently hardcoded to up to three different materials
   end type transport_parameters
   
   !TEMP: ARC: particle transport parameters
@@ -101,6 +102,7 @@ module arrays
     real(dp) :: solve_tolerance, initial_volume, diffusion_coeff, gravityx,&
       gravityy,gravityz,pdia,time_inspiration,time_breath_hold,time_expiration,&
       dt_gm, VtotTLC,totacinarLength
+    real(dp) :: inlet_flow, Eo, inlet_mouth_concentration ! TJ - To calculate extrathoracic deposition
     real(dp) :: tidal_volume = 1.e+06_dp! tidal volume target, mm^3
     real(dp) :: FRC = 3.36
     real(dp) :: mu = 18.69e-6_dp

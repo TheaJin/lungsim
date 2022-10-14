@@ -82,7 +82,7 @@ contains
     logical :: write_mass = .false.
     character(len=4) :: char_int
     character(len=MAX_FILENAME_LEN) :: file_export
-    real(dp) :: Eo
+    real(dp) :: Eo, inlet_mouth_concentration
 
 
     sub_name = 'solve_particle_decoupled'
@@ -97,7 +97,7 @@ contains
     part_param%dt_gm = 0.02_dp
     part_param%VtotTLC = 186.89_dp
     part_param%totacinarLength = 7.73_dp
-    part_param%mu = 18.69e-6_dp  ! Pa.s
+    part_param%mu = 18.69e-6_dp  ! Pa.s = g/mm/s
     part_param%prho =  1.0e-3_dp             ! density of particles [g/mm^3]
     part_param%lambda = 7.022e-5_dp  ! [mm] mean free path necessary
     part_param%kBoltz = 1.38e-14_dp  ! ! Boltzmann constant [J/K*1d9]=[kg*m^2/s^2/K*1d9]=[g*mm^2/s^2/K]
@@ -174,14 +174,45 @@ contains
     call volume_of_mesh(part_param%initial_volume, volume_tree)
 
 
+!!! TJ - Extra thoracic
+    ! M1: ICRP Method: Eo = 1- 1/(1+1.1_dp*1e-4*(da**2* Q**0.6 *VT**(-0.2))**1.4)
+    Eo = 0.0_dp
+!    if (particle_size .le. 0.2_dp) then
+!        Eo = 1.0_dp-EXP(-12.65_dp*(part_param%diffu/100.0_dp)**0.5_dp * (elem_field(ne_Vdot,1)*0.06_dp)**(-0.125_dp))
+!    else
+!        Eo = 1.0_dp - 1.0_dp/((1.0_dp+1.1_dp*1.0e-4_dp*(particle_size**2* (elem_field(ne_Vdot,1))/1.0e+3_dp)**0.6_dp * &
+!            (part_param%tidal_volume/1.0e+3_dp)**(-0.2_dp))**1.4_dp)
+!    endif
+!
+    !M2: Cheng 2003 - extra thoracic airway (Cheng, 2003), D = 0.022 cm^2/s
+    ! 1 - exp(-0.000278_dp*(da**2)*Q - 20.4_dp*D**0.66*Q**(-0.31))
+
+    part_param%inlet_flow = abs(elem_field(ne_Vdot,1))/1.0e+3_dp*0.06_dp ! [L/min]
+    write(*,'('' inlet_flow   = '',f8.5,'' L.min^-1 '')') part_param%inlet_flow
+    part_param%Eo = 1 - exp(-0.000278_dp*(particle_size**2)* part_param%inlet_flow - &
+        20.4_dp* (part_param%diffu/100)**(0.66_dp) * (part_param%inlet_flow**(-0.31_dp)) )
+
+
+!!! TJ - inlet mouth concentration
+    part_param%inlet_mouth_concentration = tp%inlet_concentration(1)
+
+!!! TJ - inlet lung concentration
+    tp%inlet_concentration(:) = tp%inlet_concentration(:) * (1-part_param%Eo)
+
+
     write(*,'('' Anatomical deadspace = '',F8.3,'' ml'')') volume_tree/1.0e+3_dp ! in mL
     write(*,'('' Respiratory volume   = '',F8.3,'' L'')') (part_param%initial_volume-volume_tree)/1.0e+6_dp !in L
     write(*,'('' Total lung volume    = '',F8.3,'' L'')') part_param%initial_volume/1.0e+6_dp !in L
     write(*,'('' Inlet flow           = '',f8.3,'' L.s^-1'')') abs(elem_field(ne_Vdot,1))/1.0e+6_dp
-    write(*,'('' Inlet concentration  = '',f8.3,'' g.mm^-3'')') node_field(nj_conc1,1)
-    write(*,'('' Particle size        = '',f8.3,'' micron m^-3'')') (part_param%pdia * 1.0e+3_dp)
-    !write(*,'('' Particle size        = '',f10.7,'' mm^-3'')') (part_param%pdia)
-    write(*,'('' Diffusion constant   = '',f8.3,'' mm^2.s^-1'')') (part_param%diffu * 1.0e+3_dp)
+    write(*,'('' Inlet concentration (mouth) = '',f8.3,'' g.mm^-3'')') node_field(nj_conc1,1)
+    write(*,'('' Inlet concentration (lung) = '',f8.5,'' g.mm^-3'')') tp%inlet_concentration(1)
+    write(*,'('' Particle size        = '',f8.3,'' micron m^-3'')') particle_size
+    write(*,'('' Particle size        = '',f10.7,'' mm^-3'')') part_param%pdia !(part_param%pdia * 1.0e+3_dp)
+    write(*,'('' ccun   = '',f10.7,'' '')') Ccun
+    write(*,'('' Diffusion constant   = '',f10.8,'' mm^2.s^-1'')') (part_param%diffu)
+
+    write(*,'('' Extrathoracic deposition   = '',f8.5,'' '')') part_param%Eo
+    pause
 
      op_name = 'file_particle' !ARC TEMP placeholder
 
@@ -199,26 +230,7 @@ contains
      !   read(*,*)
      !endif
 
-    !!! TJ - write part
-    ! M1: ICRP Method:
-    ! something with concentration
-    !Eo = 1- 1/(1+1.1_dp*1e-4*(da**2* Q**0.6 *VT**(-0.2))**1.4)
-    Eo = 0.0_dp
-    if (particle_size .le. 0.2_dp) then
-        Eo = 1.0_dp-EXP(-12.65_dp*(part_param%diffu/100.0_dp)**0.5_dp * (elem_field(ne_Vdot,1)*0.06_dp)**(-0.125_dp))
-    else
-        Eo = 1.0_dp - 1.0_dp/((1.0_dp+1.1_dp*1.0e-4_dp*(particle_size**2* (elem_field(ne_Vdot,1))/1.0e+3_dp)**0.6_dp * &
-            (part_param%tidal_volume/1.0e+3_dp)**(-0.2_dp))**1.4_dp)
-    endif
-    write(*,'('' Extrathoracic deposition   = '',f8.5,'' '')') Eo
-
-
-    pause
-    !M2: Cheng 2003
-    ! TJ - extra thoracic airway (Cheng, 2003), D = 0.022 cm^2/s
-    ! D_B = 0.037 cm^2/s
-    ! 1 - exp(-0.000278_dp*(da**2)*Q - 20.4_dp*D**0.66*Q**(-0.31))
-
+!!! Eo was here
 
 
 
@@ -233,12 +245,12 @@ contains
        write(*,'(''   (s)|  (L/s)|     (L)|   (L)|    (g)  |    Mass|    Mass|    Mass|    Mass|    Mass|'',&
             &''    %   |    %   |  (g.mm^-3)|       (g)   '')')
     else
-       write(*,'(58x, ''||----------------------------- Mass (g) in:-----------------------------||'')') 
+       write(*,'(58x, ''||---------------------------------- Mass (g) in:---------------------------------||'')')
        write(*,'(''  Time|   dVol|     Vol ( %Err) |IdlMass|    Mass ( %Err) |'',&
-            &'' Bronch| Bronch| -diff-| -sedi-| -impc-| Alveol| Alveol| '',&
-            &''-diff-| -sedi-  | DF tot| DF brn| DF alv|'')')
+            &'' Extra| Bronch| Bronch| -diff-| -sedi-| -impc-| Alveol| Alveol| '',&
+            &''-diff-| -sedi-  | DF lung| DF brn| DF alv|'')')
        write(*,'(''   (s)|    (L)|     (L)         |   (g) |     (g)         |'',&
-            &''  lumen|   wall|       |       |       |  lumen|   wall|'',&
+            &''      | lumen|   wall|       |       |       |  lumen|   wall|'',&
             &''       |         |       |       |       |'')')
     endif
 
@@ -257,6 +269,7 @@ contains
 !     time_end = time_start + part_param%time_inspiration
 !     time_end = 0.1_dp
      ! ------------------------------------------
+     !tp%inlet_concentration(1) = tp%inlet_concentration(1) * (1-part_param%Eo)
      node_field(nj_conc1,1) = tp%inlet_concentration(1) ! need to set here
 
      call solve_particles(fileid,time_end,time_start,.true.,last_breath,tp,part_param,write_mass)
@@ -350,6 +363,8 @@ contains
 
     integer :: SOLVER_FLAG
 
+    real(dp) :: extra_mass, dep_eff_extra
+
     ! #############################################################################
 
 !   set_diagnostics = .true.
@@ -380,7 +395,9 @@ contains
     time = time_start ! initialise the time
     carryon = .true. ! logical for whether solution continues
     current_mass = 0.0_dp
-    
+    extra_mass = 0.0_dp
+
+
     ! main time-stepping loop:  time-stepping continues while 'carryon' is true
     do while (carryon) !
        
@@ -392,7 +409,9 @@ contains
           call general_track(dt,.true.,tp,part_param)
           call particle_velocity(dt,part_param)
        endif
-       tp%ideal_mass = tp%ideal_mass + inlet_flow*dt*node_field(nj_conc1,1)
+
+       tp%ideal_mass = tp%ideal_mass + inlet_flow*dt*part_param%inlet_mouth_concentration
+       !tp%ideal_mass = tp%ideal_mass + inlet_flow*dt*node_field(nj_conc1,1)
 
        ! assemble the element matrices. Element matrix calculation can be done directly 
        ! (based on assumption of interpolation functions) or using Gaussian interpolation.
@@ -474,7 +493,11 @@ contains
        call calc_mass_particles(nj_conc1,nu_conc1,lumen_mass,mass_deposit,mass_by_gen, &
             part_param,unit_mass,unit_wall)
 
-       current_mass = lumen_mass + mass_deposit + unit_mass + unit_wall
+!!! TJ - add extra-thoracic
+
+       extra_mass = extra_mass + inlet_flow*dt*part_param%inlet_mouth_concentration * part_param%Eo
+       !tp%ideal_mass*part_param%Eo
+       current_mass = extra_mass + lumen_mass + mass_deposit + unit_mass + unit_wall
        
        if(.not.deposition_on) mass_deposit = 0.0_dp
 
@@ -490,6 +513,7 @@ contains
 
        dep_eff_alv = unit_wall/current_mass
        dep_eff_bronch = mass_deposit/current_mass
+       dep_eff_extra = extra_mass/current_mass
 
        if(write_mass)then
           write(*,'(f7.3,3(f8.3),f10.2,7(f9.2),f10.5,'' |'',16(f6.1))') &
@@ -498,11 +522,12 @@ contains
                mass_deposit,unit_mass, unit_wall, volume_error, &
                mass_error,node_field(nj_conc1,1),(mass_by_gen(i),i=1,16)
        else
-          write(*,'(f7.3,2(f8.3),'' ('',f5.2,'') |'',2(f8.2),'' ('',f5.2,'') |'',9(f8.2),'' |'',3(f8.3))') &
+          write(*,'(f7.3,2(f8.3),'' ('',f5.2,'') |'',2(f8.2),'' ('',f5.2,'') |'',10(f8.2),'' |'',3(f8.3))') &
                time,tp%total_volume_change/1.0e+6_dp,current_volume/1.0e+6_dp, volume_error, &
                tp%ideal_mass, &
                current_mass, &  ! the mass in the entire model
                mass_error, &    ! error in total mass
+               extra_mass,&
                lumen_mass, &    ! the mass in the bronchial airway lumen
                mass_deposit, &  ! the total mass deposited on bronchial airway walls
                sum(node_field(nj_loss_dif,1:num_nodes)), &  ! bronchial dep mass by diffusion
@@ -512,9 +537,13 @@ contains
                unit_wall, &     ! the total mass deposited on alveolar walls
                sum(unit_field(nu_loss_dif,1:num_units)), &  ! alveolar dep mass by diffusion
                sum(unit_field(nu_loss_sed,1:num_units)), &  ! alveolar dep mass by sedimentation
-               dep_eff_alv+dep_eff_bronch, &  ! total deposition fraction
+               ! TJ - NEEDS TO CHANGE ABOVE
+               (dep_eff_alv+dep_eff_bronch), &  ! total deposition fraction in lung
                dep_eff_bronch, &  ! airway deposition fraction
                dep_eff_alv        ! acinar deposition fraction
+!               (1-part_param%Eo)*(dep_eff_alv+dep_eff_bronch)+ part_param%Eo, &  ! total deposition fraction
+!               (1-part_param%Eo)*dep_eff_bronch, &  ! airway deposition fraction
+!               (1-part_param%Eo)*dep_eff_alv        ! acinar deposition fraction
        endif
        
        err = mass_error
@@ -537,8 +566,9 @@ contains
 
     write(*,'(''---------------------------------------'')')
     write(*,'('' End of breath deposition efficiencies:'')')
-    write(*,'(5x, ''TOTAL DE ='', f6.3, ''   BRONCHIAL DE ='',f6.3, ''   ALVEOLAR DE='',f6.3)') &
-         dep_eff_alv+dep_eff_bronch,dep_eff_bronch,dep_eff_alv
+    write(*,'(5x, ''TOTAL DE ='', f6.3, ''   BRONCHIAL DE ='',f6.3, ''   ALVEOLAR DE='',f6.3, ''    &
+            EXTRATHORACIC DE ='',f6.3)' ) &
+            (dep_eff_alv+dep_eff_bronch+dep_eff_extra), dep_eff_bronch, dep_eff_alv, dep_eff_extra
     write(*,'(5x, ''Diffusive-    '',5x, f8.3, 15x, f8.3)') &
          sum(node_field(nj_loss_dif,1:num_nodes)),sum(unit_field(nu_loss_dif,1:num_units))
     write(*,'(5x, ''Sedimentation-'',5x, f8.3, 15x, f8.3)') &
@@ -1462,7 +1492,8 @@ contains
     allocate(part_concentration(num_nodes))
     
 !!! Copy particle 'concentration' solution to temporary array
-    part_concentration(:) = node_field(nj_conc1,:)
+    ! TJ - where to put extrathoracic deposition?
+    part_concentration(:) = node_field(nj_conc1,:)!*(1-part_param%Eo)
 
     if(inspiration)then
        npstart = 1           ! start from node 1 to calculate deposition -- loop in flow direction
@@ -2074,7 +2105,7 @@ contains
     do ne = 1,num_elems
        np1 = elem_nodes(1,ne)
        np2 = elem_nodes(2,ne)
-       average_conc = (node_field(nj,np1)+node_field(nj,np2))/2.0_dp
+       average_conc = (node_field(nj,np1)+node_field(nj,np2))/2.0_dp!*(1-part_param%Eo)
        tree_mass(ne) = average_conc*elem_field(ne_vol,ne) ! mmol/mm^3 * mm^3
        wall_mass(ne) = node_field(nj_loss,np1)/real(elems_at_node(np1,0)) + &
             node_field(nj_loss,np2)/real(elems_at_node(np2,0))
@@ -2337,23 +2368,6 @@ contains
        if(elem_ordrs(1,ne0).le.3)    continue = .false.
     enddo
   end function element_lobe
-
-!    select case(hour)
-!        case( 1:8 )
-!            activity = 'sleep'
-!        case( 9:11, 13, 14 )
-!            activity = 'class'
-!        case( 12, 17 )
-!            activity = 'meal'
-!        case default
-!            activity = 'copious free time'
-!    end select
-       !if(ne0.le.200)
-       !generation = elem_ordrs(1,ne0)
-       !write(*,*) 'koone: ', ne0!print *,'ne0', ne0
-       ! if(ne0.le.200.or.elem_ordrs(1,ne0).ne.generation) continue = .false.
-       !if(ne0.le.200.or.elem_ordrs(1,ne0).ne.generation) continue = .false.
-
 
 
   ! #################################################################

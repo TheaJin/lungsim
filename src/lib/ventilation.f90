@@ -127,8 +127,8 @@ contains
     call volume_of_mesh(init_vol,volume_tree)
 
     ! TJ - Change deadspace volume by 87% (test
-    volume_tree = volume_tree * 0.87_dp
-    print *, 'volume_tree 3', volume_tree
+!    volume_tree = volume_tree * 0.87_dp
+!    print *, 'volume_tree 3', volume_tree
 
     write(*,'('' Anatomical deadspace = '',F8.3,'' ml'')') &
          volume_tree/1.0e+3_dp ! in mL
