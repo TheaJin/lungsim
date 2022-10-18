@@ -116,19 +116,13 @@ contains
     call update_elem_field(1.0_dp)
     call update_resistance
     call volume_of_mesh(init_vol,volume_tree)
-    !print *, 'volume_tree', volume_tree
 
 !!! distribute the initial tissue unit volumes along the gravitational axis.
     call set_initial_volume(gdirn,COV,FRC*1.0e+6_dp,RMaxMean,RMinMean)
     undef = refvol * (FRC*1.0e+6_dp-volume_tree)/dble(elem_units_below(1))
-    !print *, 'volume_tree 2', volume_tree
 
 !!! calculate the total model volume
     call volume_of_mesh(init_vol,volume_tree)
-
-    ! TJ - Change deadspace volume by 87% (test
-!    volume_tree = volume_tree * 0.87_dp
-!    print *, 'volume_tree 3', volume_tree
 
     write(*,'('' Anatomical deadspace = '',F8.3,'' ml'')') &
          volume_tree/1.0e+3_dp ! in mL
@@ -716,7 +710,8 @@ contains
        reynolds = abs(elem_field(ne_Vdot,ne)*2.0_dp*GAS_DENSITY/ &
             (pi*elem_field(ne_radius,ne)*GAS_VISCOSITY))
        zeta = MAX(1.0_dp,dsqrt(2.0_dp*elem_field(ne_radius,ne)* &
-            reynolds/cumulative_branch_length(ne))*gamma)
+            reynolds/elem_field(ne_length,ne))*gamma)
+       !reynolds/cumulative_branch_length(ne))*gamma)
        elem_field(ne_resist,ne) = resistance * zeta
        elem_field(ne_t_resist,ne) = elem_field(ne_resist,ne) + &
             elem_field(ne_t_resist,ne)
