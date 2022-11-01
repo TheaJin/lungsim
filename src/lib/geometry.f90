@@ -2587,7 +2587,7 @@ contains
 
        ne = 0
        ne_counter = 0
-       
+
        read_an_elem : do !define a do loop name
           !.......read element number
           read(unit=10, fmt="(a)", iostat=ierror) ctemp1
@@ -2604,8 +2604,10 @@ contains
                    radius = get_final_real(ctemp1)
                    radius = radius * constant_scale
                    elem_field(ne_radius,ne) = radius
-                   elem_field(ne_radius_in,ne) = radius
-                   elem_field(ne_radius_out,ne) = radius
+                   if(radius_type.eq.'taper')then ! only for blood vessel, not for airway!
+                       elem_field(ne_radius_in,ne) = radius
+                       elem_field(ne_radius_out,ne) = radius
+                   end if
                 endif
                 ne_counter = ne_counter + 1
              endif
@@ -2700,7 +2702,7 @@ contains
     
     ne=ne_start
 
-    if(ORDER_SYSTEM(1:3).eq.'ftt')then
+    if(ORDER_SYSTEM(1:3).eq.'ftt')then ! TJ- fit?
        nindex = no_hord ! default is Horsfield ordering; could be modified to either type
        do ne = ne_min,ne_max
           if(elem_field(ne_radius,ne).lt.USER_RAD)then
@@ -3500,7 +3502,9 @@ contains
        random_number=random_number+0.1_dp
        if(random_number.GT.1.0_dp) random_number=-1.1_dp
        unit_field(nu_vol,nunit)=(Vmax*Xi+Vmin*(1.0_dp-Xi))*(1.0_dp+COV*random_number)
-       unit_field(nu_vt,nunit)=0.0_dp !initialise the tidal volume to a unit
+       ! TJ - I don't think this is the way to fix it!
+       !unit_field(nu_vt,nunit) = 0.0_dp ! *TJ* origin
+       if (nu_vt .gt. 0) unit_field(nu_vt,nunit) = 0.0_dp !initialise the tidal volume to a unit
     enddo !nunit
     
     ! correct unit volumes such that total volume is exactly as specified

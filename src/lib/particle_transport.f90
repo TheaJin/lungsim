@@ -110,7 +110,7 @@ contains
 !!! length acinar ducts for terminal bronchiole 9 generations (HAEFELI-BLEUER, 1988)
     part_param%LacTLC = (/0.8_dp,1.33_dp,1.12_dp,0.93_dp,0.83_dp,0.7_dp,0.7_dp,0.7_dp,0.67_dp,0.75_dp/)
 !!! acinar volume at TLC for 9 generations (estimated from HAEFELI-BLEUER, 1988)
-    part_param%VacTLC = (/0.87_dp,1.70_dp,2.49_dp,4.81_dp,7.56_dp,14.07_dp,24.60_dp,43.93_dp,86.86_dp/)
+    part_param%VacTLC = (/0.87_dp,1.70_dp,2.49_dp,4.81_dp,7.56_dp,14.07_dp,24.60_dp,43.93_dp,86.86_dp/) ! mm^3
 !!! Cunningham slip correction factor 
     Ccun = 1.0_dp + 2.0_dp * part_param%lambda/part_param%pdia &
          * (1.257_dp+0.4_dp*exp(-0.55_dp*part_param%pdia/part_param%lambda))
@@ -263,13 +263,13 @@ contains
      call scale_flow_field(inlet_flow)
 
      time_start = time_start + time_end
-     time_end = time_end + part_param%time_inspiration ! 0.05_dp!0.1_dp
+     time_end = time_end + part_param%time_inspiration
      ! ----------------- origin -----------------
 !     time_start = time_end
 !     time_end = time_start + part_param%time_inspiration
 !     time_end = 0.1_dp
      ! ------------------------------------------
-     !tp%inlet_concentration(1) = tp%inlet_concentration(1) * (1-part_param%Eo)
+
      node_field(nj_conc1,1) = tp%inlet_concentration(1) ! need to set here
 
      call solve_particles(fileid,time_end,time_start,.true.,last_breath,tp,part_param,write_mass)
@@ -381,7 +381,7 @@ contains
 !   if(.not.allocated(M_C_M)) allocate(M_C_M(num_nodes))
 
     if(.not.allocated(part_acinus_field))then
-       allocate(part_acinus_field(20,num_units)) !ARCallocating a 20 long aray?
+       allocate(part_acinus_field(20,num_units)) !ARC allocating a 20 long aray?
        part_acinus_field(:,:) = 0.0_dp
     endif
     
@@ -415,7 +415,9 @@ contains
 
        ! assemble the element matrices. Element matrix calculation can be done directly 
        ! (based on assumption of interpolation functions) or using Gaussian interpolation.
+
        call assemble_transport_matrix(part_param%diffusion_coeff) ! also for particles
+
        ! initialise the values in the solution matrices
        global_AA(1:nonzeros) = 0.0_dp ! equivalent to M in Tawhai thesis
        global_BB(1:num_nodes) = 0.0_dp ! equivalent to K in Tawhai thesis
@@ -1615,12 +1617,17 @@ contains
           ! *MHT - changed, but only re-ordered
           Vdep(3) = Vdep(3) + pi*abs(vfluid)*h* ((2.0_dp*radius(0)-h)*length/lduct) * dt ! deposition with referencing to time step dt
 
+
+
+!!!!!!!! TJ - Acinar deposition
+
 !!!! calculate deposition in acini
           if(num_units.gt.0.and.elem_cnct(1,0,ne).eq.0.and.acinar_deposition)then 
 !!!!         call acinar_deposition(ne,current_volume,dt)
 
              nunit = where_inlist(ne,units) ! get the unit number
              current_volume = unit_field(nu_vol,nunit)
+
              ! scaling factor from Haefeli-Bleuer & Weibel TLC size to current size
              vol_croot_scale = (current_volume/part_param%VtotTLC)**(1.0_dp/3.0_dp)
              
@@ -1665,11 +1672,16 @@ contains
 
             do gen = 1,9 ! loop over acinar generations - deposition efficiency the same in all gens
                abbr(4) = abbr(4)+part_param%LacTLC(gen+1)*vol_croot_scale ! axial position of node (length of acinar duct)
-               radius(gen) = (part_param%totacinarLength*vol_croot_scale-abbr(4)) &
-                    /(part_param%totacinarLength*vol_croot_scale)*abbr(3)+ &
-                    part_param%RacTLC(gen+1)*vol_croot_scale
+
+!               radius(gen) = (part_param%totacinarLength*vol_croot_scale-abbr(4)) &
+!                    /(part_param%totacinarLength*vol_croot_scale)*abbr(3)+ &
+!                    part_param%RacTLC(gen+1)*vol_croot_scale
+
+               radius(gen) = part_param%RacTLC(gen+1)*vol_croot_scale
                crossec(gen) = pi*radius(gen)**2.0_dp*(2.0_dp**gen) ! accumulated duct cross-sectional area 
                Vduct(gen) = crossec(gen)*part_param%LacTLC(gen+1)*vol_croot_scale  ! duct volume in acinar region
+
+               ! TJ - this is different from acinus_transport
                volume(gen) = part_param%VacTLC(gen) * (current_volume/part_param%VtotTLC) - Vduct(gen)
                part_acinus_old(gen) = part_acinus_field(1+gen,nunit)
                 
@@ -1703,14 +1715,14 @@ contains
                 Vdep(7) = (Vdep(7)+ pi * part_param%prho * 9.81e3_dp &
                         *part_param%pdia**2.0_dp *dt *Dalv**2 &
                         /72.0_dp/part_param%mu)* part_param%grav_factor
-!                Vdep(7) = 0 ! TJ - test for 0G
+!               ! TJ - test for 0G
 
                 ! deposition fraction due to sedimentation (0.853d0 is area correction ChoiKim2007)
-                !DepFrac(5) = 0 ! TJ - test for 0G
+                ! TJ - test for 0G
                 DepFrac(5) = part_param%prho &
                              *9.81e3_dp & !part_param%gravityy &
                              *part_param%pdia**2.0_dp &
-                             *dt/12.0_dp/part_param%mu/Dalv* part_param%grav_factor
+                             *dt/12.0_dp/part_param%mu/Dalv * part_param%grav_factor
 
 
 !                DepFrac(5) = part_acinus_field(1+gen,nunit) &
@@ -1746,7 +1758,7 @@ contains
                         *9.81e3_dp & !*part_param%gravityy &
                         *part_param%pdia**2.0_dp &
                         *part_param%LacTLC(gen+1)*vol_croot_scale*radius(gen)*dt/9.0_dp/part_param%mu !*Ccun
-                    !Vdep(5) = 0
+
 !                   Vdep(5) = (2.0_dp**gen)*2.0_dp/pi &
 !                        *part_acinus_field(1+gen,nunit) &
 !                        *9.81e3_dp & !*part_param%gravityy &
@@ -1768,6 +1780,7 @@ contains
                       ! sum deposition volumes without mutually eliminating volume
 !                      Vdep(6) = Vdep(4)/2.0_dp+Vdep(5)+DMAX1(Vdep(4)/2.0_dp-Vdep(5),0.0_dp)
                        Vdep(6) = Vdep(4)/2.0_dp + (Vdep(7)+Vdep(5)) + DMAX1(Vdep(4)/2.0_dp-(Vdep(7)+Vdep(5)),0.0_dp) !TJ change
+
                    endif
                    !                   
                    do j = 4,6
@@ -1779,7 +1792,7 @@ contains
                       if(Vdep(j).ne.Vdep(j)) Vdep(j) = 0.0_dp ! function ISNAN does not work
                    enddo !j
 !                endif !gen.LT.9
-                
+
                 if(part_acinus_field(1+gen,nunit).ge.0.0_dp)then
                    ! NOTHING because thsi way NaN values are covered too
                 else
@@ -1787,14 +1800,19 @@ contains
                 endif
 
                 ! for deposition in the alveolar tissue the radial concentration profile is approximated by taking the next generation
-                unit_loss = Vdep(6)*part_acinus_field(1+gen,nunit) &
+               ! TJ - 2022 OCT 31: for H6229 under pt =3.0, volume(gen) is negative
+
+               unit_loss = Vdep(6)*part_acinus_field(1+gen,nunit) &
                      +volume(gen)*DepFrac(6)*part_acinus_field(MIN(gen+2,10),nunit)
-                
+
+               !if (volume(gen) .lt. 0.0_dp) print *, 'error: volume(gen)', volume(gen)
+
                 unit_field(nu_loss,nunit) = unit_field(nu_loss,nunit) + unit_loss ! store deposition quantity (mass in [g])
                 unit_field(nu_loss_dif,nunit) = unit_field(nu_loss_dif,nunit) + Vdep(4)*part_acinus_field(1+gen,nunit) &
                      +volume(gen)*DepFrac(4)*part_acinus_field(MIN(gen+2,10),nunit) ! store diffusion quantity (mass in [g])
-                unit_field(nu_loss_sed,nunit) = unit_field(nu_loss_sed,nunit) + (Vdep(7)+Vdep(5))*part_acinus_field(1+gen,nunit) &
-                     +volume(gen)*DepFrac(5)*part_acinus_field(MIN(gen+2,10),nunit) ! store sedimentaion quantity (mass in [g])
+                unit_field(nu_loss_sed,nunit) = unit_field(nu_loss_sed,nunit) + &
+                        (Vdep(7)+Vdep(5))*part_acinus_field(1+gen,nunit) &
+                     + volume(gen)*DepFrac(5)*part_acinus_field(MIN(gen+2,10),nunit) ! store sedimentaion quantity (mass in [g])
 !                unit_field(nu_loss_sed,nunit) = unit_field(nu_loss_sed,nunit) + Vdep(5)*part_acinus_field(1+gen,nunit) &
 !                     +volume(gen)*DepFrac(5)*part_acinus_field(MIN(gen+2,10),nunit) ! store sedimentaion quantity (mass in [g])
 
@@ -1829,7 +1847,7 @@ contains
        part_concentration(np) = (part_concentration(np)*Vtot - mass_loss_np)/Vtot
 
     enddo !np
-
+    !print *, 'vdep(6)', Vdep(6)
 !!! copy nj_source (concentration - deposition) field to nj_conc1 field
     node_field(nj_conc1,:) = part_concentration(:)
 
@@ -1891,9 +1909,9 @@ contains
        node_field(nj_conc1,np) = 0.0_dp
     endif
     
-    volflow = elem_field(ne_part_vel,ne)                                 ! volume flow particle in terminal bronchiole
+    volflow = elem_field(ne_part_vel,ne)                                 ! volume flow particle in terminal bronchiolprint
+    if(volflow .lt.0.0_dp) volflow = 0.0_dp ! TJ -change flow to zero
     veloc(0) = volflow/crossec(0)
-
     ! total volume change in one time step
     deltaV(-1) = elem_field(ne_Vdot,ne)*dt
 
@@ -2105,7 +2123,7 @@ contains
     do ne = 1,num_elems
        np1 = elem_nodes(1,ne)
        np2 = elem_nodes(2,ne)
-       average_conc = (node_field(nj,np1)+node_field(nj,np2))/2.0_dp!*(1-part_param%Eo)
+       average_conc = (node_field(nj,np1)+node_field(nj,np2))/2.0_dp
        tree_mass(ne) = average_conc*elem_field(ne_vol,ne) ! mmol/mm^3 * mm^3
        wall_mass(ne) = node_field(nj_loss,np1)/real(elems_at_node(np1,0)) + &
             node_field(nj_loss,np2)/real(elems_at_node(np2,0))
@@ -2124,6 +2142,7 @@ contains
        unit_tree_mass(ne) = unit_field(nu_vol,nunit)*unit_field(nu_field,nunit) &
             - unit_field(nu_loss,nunit) ! units of mass
        unit_wall_mass(ne) = unit_field(nu_loss,nunit)      ! units of mass
+        !if (unit_wall_mass(ne) .lt. 0.0_dp) print *, 'error 1:', ne
     enddo
 
     ! sum mass recursively up the tree
@@ -2133,6 +2152,9 @@ contains
        wall_mass(ne0) = wall_mass(ne0) + dble(elem_symmetry(ne))*wall_mass(ne)
        unit_tree_mass(ne0) = unit_tree_mass(ne0) + dble(elem_symmetry(ne))*unit_tree_mass(ne)
        unit_wall_mass(ne0) = unit_wall_mass(ne0) + dble(elem_symmetry(ne))*unit_wall_mass(ne)
+
+       !if (unit_wall_mass(ne0) .lt. 0.0_dp) print *, 'error:', ne0
+
        elem_field(ne_mass,ne0) = elem_field(ne_mass,ne0) + dble(elem_symmetry(ne))*elem_field(ne_mass,ne)
     enddo !noelem
 

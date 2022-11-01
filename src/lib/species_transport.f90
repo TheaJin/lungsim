@@ -581,6 +581,7 @@ contains
     outer_area=PI*radius**2
     inner_area=outer_area*a_A_ratio
 
+    print *, 'ne_flow', ne_flow
     if(elem_field(ne_flow,1).gt.0.0_dp)then ! inhalation
        ! apparent diffusion acc.to. Lee2001 exhalation
        kappa = 0.26_dp*abs(elem_field(ne_flow,ne))*2.0_dp/pi/radius 
