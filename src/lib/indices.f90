@@ -235,6 +235,7 @@ contains
     ne_dvdt = 8
     ne_vd_bel = 9
     ne_vol_bel = 10
+
     ! indices for unit_field
     num_nu=10
     nu_vol=1
@@ -320,7 +321,7 @@ contains
     ne_loss = 13
 
     ! indices for unit_field
-    num_nu=12
+    num_nu=13
     nu_vol=1 !volume of unit
     nu_comp=2
     nu_Vdot0=3 !flow in unit
@@ -334,7 +335,7 @@ contains
     nu_loss = 10
     nu_loss_dif = 11
     nu_loss_sed = 12 
-    
+    nu_vt = 13
     
     call enter_exit(sub_name,2)
   end subroutine particle_indices

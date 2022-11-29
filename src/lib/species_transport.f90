@@ -581,14 +581,14 @@ contains
     outer_area=PI*radius**2
     inner_area=outer_area*a_A_ratio
 
-    print *, 'ne_flow', ne_flow
-    if(elem_field(ne_flow,1).gt.0.0_dp)then ! inhalation
+    ! TJ - 2022 NOV 02: change ne_flow to be ne_Vdot
+    if(elem_field(ne_Vdot,1).gt.0.0_dp)then ! inhalation
        ! apparent diffusion acc.to. Lee2001 exhalation
-       kappa = 0.26_dp*abs(elem_field(ne_flow,ne))*2.0_dp/pi/radius 
+       kappa = 0.26_dp*abs(elem_field(ne_Vdot,ne))*2.0_dp/pi/radius
        kappa = kappa/6.0_dp/radius*elem_field(ne_length,ne)
        ! using this kappa is f(l) instead f(d) - see results validation Gomes1993
     else ! exhalation
-       kappa = 0.26_dp*abs(elem_field(ne_flow,ne))*2.0_dp/pi/radius ! apparent diffusion acc.to. Lee2001 exhalation
+       kappa = 0.26_dp*abs(elem_field(ne_Vdot,ne))*2.0_dp/pi/radius ! apparent diffusion acc.to. Lee2001 exhalation
     endif
 
     elem_M(1,1) = outer_area*length/3.0_dp*DBLE(elem_symmetry(ne))

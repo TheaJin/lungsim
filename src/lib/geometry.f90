@@ -2632,7 +2632,7 @@ contains
        ! element volume
        elem_field(ne_vol,ne) = PI * elem_field(ne_radius,ne)**2 * &
             elem_field(ne_length,ne)
-       elem_field(ne_a_A,ne) = 1.0_dp ! set default for ratio a/A
+       if(ne_a_A.ne.0) elem_field(ne_a_A,ne) = 1.0_dp ! set default for ratio a/A
     enddo
 
     call enter_exit(sub_name,2)
@@ -3486,8 +3486,13 @@ contains
     do nunit=1,num_units
        ne=units(nunit)
        np2=elem_nodes(2,ne)
-       max_z=MAX(max_z,node_xyz(Gdirn,np2))
-       min_z=MIN(min_z,node_xyz(Gdirn,np2))
+       if (Gdirn.eq.0)then
+           max_z = MAX(max_z,node_xyz(3,np2))
+           min_z = MIN(min_z,node_xyz(3,np2))
+       else
+           max_z=MAX(max_z,node_xyz(Gdirn,np2))
+           min_z=MIN(min_z,node_xyz(Gdirn,np2))
+       end if
     enddo !nunit
     
     range_z=abs(max_z-min_z)
@@ -3498,13 +3503,18 @@ contains
     do nunit=1,num_units
        ne=units(nunit)
        np2=elem_nodes(2,ne) !end node
-       Xi=(node_xyz(Gdirn,np2)-min_z)/range_z
+       if (Gdirn.eq.0)then
+           Xi=(node_xyz(3,np2)-min_z)/range_z
+       else
+           Xi=(node_xyz(Gdirn,np2)-min_z)/range_z
+       end if
        random_number=random_number+0.1_dp
        if(random_number.GT.1.0_dp) random_number=-1.1_dp
        unit_field(nu_vol,nunit)=(Vmax*Xi+Vmin*(1.0_dp-Xi))*(1.0_dp+COV*random_number)
-       ! TJ - I don't think this is the way to fix it!
-       !unit_field(nu_vt,nunit) = 0.0_dp ! *TJ* origin
-       if (nu_vt .gt. 0) unit_field(nu_vt,nunit) = 0.0_dp !initialise the tidal volume to a unit
+
+       ! TJ - 2022 NOV 01: I don't think this is the way to fix it!
+       ! if(nu_vt .gt. 0) unit_field(nu_vt,nunit) = 0.0_dp !initialise the tidal volume to a unit
+        unit_field(nu_vt,nunit) = 0.0_dp ! *TJ* origin
     enddo !nunit
     
     ! correct unit volumes such that total volume is exactly as specified

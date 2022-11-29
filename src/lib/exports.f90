@@ -31,9 +31,9 @@ contains
 
 !!! Parameters
     integer, intent(in) :: ne_field
-    character(len=MAX_FILENAME_LEN), intent(in) :: EXELEMFILE
-    character(len=MAX_STRING_LEN), intent(in) :: field_name
-    character(len=MAX_STRING_LEN), intent(in) :: group_name
+    character(len=*), intent(in) :: EXELEMFILE
+    character(len=*), intent(in) :: field_name
+    character(len=*), intent(in) :: group_name
 
 !!! Local Variables
     integer :: len_end,ne
@@ -481,8 +481,8 @@ contains
   !DEC$ ATTRIBUTES DLLEXPORT,ALIAS:"SO_EXPORT_TERMINAL_SOLUTION" :: EXPORT_TERMINAL_SOLUTION
 
 !!! Parameters
-    character(len=MAX_FILENAME_LEN),intent(in) :: EXNODEFILE
-    character(len=MAX_STRING_LEN),intent(in) :: name
+    character(len=*),intent(in) :: EXNODEFILE
+    character(len=*),intent(in) :: name
 
 !!! Local Variables
     integer :: len_end,ne,nj,NOLIST,np,np_last,VALUE_INDEX
@@ -726,9 +726,9 @@ contains
 
 !!! Parameters
     integer,intent(in) :: nj_field
-    character(len=MAX_FILENAME_LEN),intent(in) :: EXNODEFIELD
-    character(len=MAX_STRING_LEN),intent(in) :: field_name
-    character(len=MAX_STRING_LEN),intent(in) :: name
+    character(len=*),intent(in) :: EXNODEFIELD
+    character(len=*),intent(in) :: field_name
+    character(len=*),intent(in) :: name
 
 !!! Local Variables
     integer :: len_end,np
@@ -767,9 +767,9 @@ contains
   !DEC$ ATTRIBUTES DLLEXPORT,ALIAS:"SO_EXPORT_ELEM_FIELD" :: EXPORT_ELEM_FIELD
 
 !!! Parameters
-    character(len=MAX_FILENAME_LEN), intent(in) :: EXELEMFIELD
-    character(len=MAX_STRING_LEN), intent(in) :: field_name
-    character(len=MAX_STRING_LEN), intent(in) :: name
+    character(len=*), intent(in) :: EXELEMFIELD
+    character(len=*), intent(in) :: field_name
+    character(len=*), intent(in) :: name
 
 !!! Local Variables
     integer :: len_end,ne,nn
