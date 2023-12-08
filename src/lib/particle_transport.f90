@@ -1773,7 +1773,8 @@ contains
                enddo !j
 
                if((abbr(6).gt.0.0_dp).and.(abs(abbr(6)-abbr(5)).ge.zero_tol).and.(abbr(6).le.abbr(5)))then
-                   ! TJ - add (abbr(6).le.abbr(5)) to avoid negative DepFrac(4)
+               !if((abbr(6).gt.0.0_dp).and.(abs(abbr(6)-abbr(5)).ge.zero_tol))then
+                   ! TJ - 13 Dec 2022 - add (abbr(6).le.abbr(5)) to avoid negative DepFrac(4)
                    ! can become zero for large T (accuracy of real*8)
                    ! diffusion fraction out of a sphere (Diffusion,Jost,1960) (0.853d0 is area correction ChoiKim2007)
                    ! TJ - 29 NOV 2022 - change back to solve negative DepFrac(4) issue
@@ -1800,7 +1801,7 @@ contains
 !                             *dt/12.0_dp/part_param%mu/Dalv  !*0.853_dp
 
                 ! sum deposition fractions without mutually eliminating part
-                DepFrac(6) = DepFrac(4)/2.0_dp+DepFrac(5)+DMAX1(DepFrac(4)/2.0_dp-DepFrac(5),0.0_dp)
+                DepFrac(6) = DepFrac(4)/2.0_dp + DepFrac(5) + DMAX1(DepFrac(4)/2.0_dp-DepFrac(5), 0.0_dp)
                 do j = 4,6
                   if(DepFrac(j).ge.0.2_dp)then
                     if(DepFrac(j).gt.1.0_dp) DepFrac(j) = 1.0_dp ! check if deposition volume extends volume in Acinus 
@@ -1918,7 +1919,8 @@ contains
        part_concentration(np) = (part_concentration(np)*Vtot - mass_loss_np)/Vtot
     enddo !np
 
-    print *, 'DepFrac(4)', DepFrac(4)
+    print *, 'DepFrac(4:6)', DepFrac(4:6)
+    !pause
 
 !!! copy nj_source (concentration - deposition) field to nj_conc1 field
     node_field(nj_conc1,:) = part_concentration(:)

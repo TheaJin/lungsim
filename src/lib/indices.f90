@@ -28,7 +28,8 @@ module indices
        ne_resist=0,ne_t_resist=0,ne_Vdot=0,ne_Vdot0=0,ne_a_A=0,&
        ne_dvdt=0,ne_radius_in=0,ne_radius_in0=0,&
        ne_radius_out=0,ne_radius_out0=0,ne_group=0,ne_Qdot=0, &
-       ne_vd_bel=0, ne_vol_bel=0, ne_loss = 0
+       ne_vd_bel=0, ne_vol_bel=0, ne_loss = 0, ne_area
+
   ! indices for unit_field
   integer :: num_nu,nu_vol=0,nu_comp=0,nu_conc2=0,nu_Vdot0=0,nu_Vdot1=0, &
        nu_Vdot2=0,nu_dpdt=0,nu_pe=0,nu_vt=0,nu_air_press=0,nu_conc1=0,nu_vent=0,&
@@ -64,7 +65,7 @@ module indices
        ne_resist,ne_t_resist,ne_Vdot,ne_Vdot0,ne_a_A,&
        ne_dvdt,ne_radius_in,ne_radius_in0,ne_radius_out,&
        ne_radius_out0,ne_group,ne_Qdot, &
-       ne_vd_bel, ne_vol_bel, ne_loss
+       ne_vd_bel, ne_vol_bel, ne_loss, ne_area
   
   public num_nu,nu_vol,nu_comp, nu_conc2,nu_Vdot0,nu_Vdot1, &
        nu_Vdot2,nu_dpdt,nu_pe,nu_vt,nu_air_press,&
@@ -223,8 +224,9 @@ contains
     ! indices for node_field
     num_nj=2 !number of nodal fields
     nj_aw_press=2 !air pressure
+
     ! indices for elem_field
-    num_ne = 10 !number of element fields
+    num_ne = 11 !number of element fields
     ne_radius = 1 !radius of airway
     ne_length = 2 !length of airway
     ne_vol = 3 !volume
@@ -235,6 +237,7 @@ contains
     ne_dvdt = 8
     ne_vd_bel = 9
     ne_vol_bel = 10
+    ne_area = 11 ! TJ - 4 APR 2023 - for surface area
 
     ! indices for unit_field
     num_nu=10

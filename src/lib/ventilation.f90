@@ -675,6 +675,10 @@ contains
        ! element volume
        elem_field(ne_vol,ne) = PI * elem_field(ne_radius,ne)**2 * &
             elem_field(ne_length,ne)
+
+       ! TJ - 04APR2023 - element surface areA
+       elem_field(ne_area,ne) = PI * elem_field(ne_radius,ne) * 2 * &
+            elem_field(ne_length,ne)
     enddo ! ne
     
     call enter_exit(sub_name,2)
