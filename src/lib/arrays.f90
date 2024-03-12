@@ -113,7 +113,7 @@ module arrays
     integer :: out_itr_max = 200      ! max # (outer) iterations using GMRES solver.
     integer :: inr_itr_max = 100      ! max # (inner) iterations using GMRES solver.
 
-    logical :: coupled = .FALSE.
+    logical :: coupled = .false.
     logical :: last_breath, inspiration
     integer :: n_export
     character(len=200) :: lung_root
