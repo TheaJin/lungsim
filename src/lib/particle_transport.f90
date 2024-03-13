@@ -1756,9 +1756,6 @@ end function calculate_Eo
                Vduct(gen) = crossec(gen)*part_param%LacTLC(gen+1)*vol_croot_scale  ! duct volume in acinar region
                volume(gen) = part_param%VacTLC(gen) * (current_volume/part_param%VtotTLC) - Vduct(gen)
 
-               ! TJ - previously not used in this subroutine
-               !part_acinus_old(gen) = part_acinus_field(1+gen,nunit)
-
 !!!.............diffusion in alveolar tissue
                ! TJ - 28 Nov 2022 - it does not match with Falko's thesis
                abbr(5) = 0.0_dp
@@ -1778,21 +1775,6 @@ end function calculate_Eo
                    j = j + 1
                enddo !j
 
-!               !if((abbr(6).gt.0.0_dp).and.(abs(abbr(6)-abbr(5)).ge.zero_tol).and.(abbr(6).le.abbr(5)))then
-!               if((abbr(6).gt.0.0_dp).and.(abs(abbr(6)-abbr(5)).ge.zero_tol))then
-!                   ! TJ - add (abbr(6).le.abbr(5)) to avoid negative DepFrac(4)
-!                   ! can become zero for large T (accuracy of real*8)
-!                   ! diffusion fraction out of a sphere (Diffusion,Jost,1960) (0.853d0 is area correction ChoiKim2007)
-!                   ! TJ - 29 NOV 2022 - change back to solve negative DepFrac(4) issue
-!                   ! TJ - 08 Dec 2022 - deprecated 0.853 for further detection
-!                   DepFrac(4) = 1.0_dp - (abbr(6)/abbr(5))*6/pi ! * 0.853_dp !*MHT change*
-!!               elseif(abbr(6).le.abbr(5))then
-!!                   DepFrac(4) = 1.0_dp
-!               else
-!                   DepFrac(4) = 0.0_dp
-!               endif
-
-
                if((abbr(6).gt.0.0_dp).and.(abs(abbr(6)-abbr(5)).ge.zero_tol))then
                    ! TJ - add (abbr(6).le.abbr(5)) to avoid negative DepFrac(4)
                    ! can become zero for large T (accuracy of real*8)
@@ -1805,7 +1787,6 @@ end function calculate_Eo
                else
                    DepFrac(4) = 0.0_dp
                endif
-
 
 !!!!............ TJ - 12 mar 2024  ------------------------------------------------------
           !!!!............ sedimentation in alveolar tissue
@@ -1823,7 +1804,17 @@ end function calculate_Eo
                ! here we incorporate  a ballon-n-stick alveolus assumption.
                h = 4.0_dp/9.0_dp*(6.0_dp*part_param%diffu * (part_param%LacTLC(gen+1)*vol_croot_scale + 2*Rin) &
                         /abs(veloc(gen)))**0.5_dp/pi
-               Vdep(4) = 2*pi**2*h*(radius(gen)*0.65_dp)**3/3 *2.0_dp**gen
+
+               Vdep(4) = 2*pi**2*h*(Rin)**3/3 * (2.0_dp**gen)
+
+               !! TJ - mar 14 2024 - should add a check here?
+!               if(h.gt.radius(gen))then ! all particles are deposited
+!                   Vdep(4) = Vduct(gen)!*0.853_dp
+!                   Vdep(6) = Vduct(gen)!*0.853_dp
+!               else
+!
+!               endif
+
                Vdep(6) = Vdep(4)/2.0_dp + (Vdep(7)+Vdep(5)) + DMAX1(Vdep(4)/2.0_dp-(Vdep(7)+Vdep(5)),0.0_dp) !TJ change
 
                ! volume change each generation within on time step
@@ -1836,12 +1827,14 @@ end function calculate_Eo
                DepFrac(6) = DepFrac(4)/2.0_dp + DepFrac(5) + DMAX1(DepFrac(4)/2.0_dp - DepFrac(5), 0.0_dp)
 !!!!................................. TJ - 12 mar 2024  end ------------------------------------------------------
 
+
+!!! ----------------------------------------  Falko Schmidt 2011 -------------------------------------------------------
                ! TJ - add EQN (56), we separate alveolar sed into sed_duct and sed_wall
                ! tj - test close vdep7
 !               Vdep(7) = (Vdep(7)+ pi * part_param%prho * 9.81e3_dp &
 !                        *part_param%pdia**2.0_dp *dt *Dalv**2 &
 !                        /72.0_dp/part_param%mu)* part_param%grav_factor
-! TJ - 11 MAR 2024 -  the previous looks weird!
+!               ! TJ - 11 MAR 2024 -  the previous looks weird!
 !               Vdep(5) = (2.0_dp**gen) * (pi * part_param%prho * 9.81e3_dp &
 !                        *part_param%pdia**2.0_dp *dt * (Dalv*0.65_dp)**2 &
 !                        /72.0_dp/part_param%mu)* part_param%grav_factor
@@ -1869,25 +1862,7 @@ end function calculate_Eo
 !                            *dt/18.0_dp/part_param%mu* Dalv**2 * part_acinus_field(1+gen,nunit) * part_param%grav_factor
                              & !part_param%gravityy &
 
-
-
-
-                ! tj - test for sed- 2024 mar 12--------------------------------------------------
-               ! heyder 1976
-!               T = veloc(gen)*part_acinus_field(10+gen, nunit)/Dalv
-!               kappa= 3.0_dp * T * cos(alpha/4)
-!               DepFrac(5) = 2.0_dp / pi * (2.0_dp * kappa * (1.0_dp - kappa ** (2.0_dp / 3.0_dp))**0.5_dp &
-!               - kappa ** (1.0_dp / 3.0_dp) &
-!                               * (1.0_dp - kappa**(2.0_dp / 3.0_dp))**0.5_dp  + asin(kappa**(1.0_dp / 3.0_dp)))
-               !Vdep(5) = (2.0_dp**gen) * DepFrac(5)* pi* Dalv**3 /6
-
-
-
-
-
-
-!!! ----------------------------------------  Falko Schmidt 2011 -------------------------------------------------------
-               !!Brownian diffusion (average travelling distance within alveolar duct)
+               !!----------- Brownian diffusion (average travelling distance within alveolar duct)
 !               h = 2.0_dp/3.0_dp*(4.0_dp*part_param%diffu * part_param%LacTLC(gen+1)*vol_croot_scale&
 !                        /abs(veloc(gen)))**0.5_dp/pi
 !
