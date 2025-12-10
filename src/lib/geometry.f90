@@ -60,6 +60,7 @@ module geometry
   public get_four_nodes
   public write_elem_geometry_2d
   public write_node_geometry_2d
+  public apply_cluster_constriction
   
 contains
 
@@ -5172,5 +5173,124 @@ contains
   end subroutine write_3d_geo
 
 !!!#############################################################################
-  
+!subroutine apply_cluster_constriction(ne_parent)
+!  ! Applies constriction to every 4th airway *cluster* in Horsfield orders 8–12
+!  ! downstream of the specified parent element
+!
+!  use arrays
+!
+!  integer, intent(in) :: ne_parent
+!  integer :: ne, i, j, ord, cluster_idx
+!  integer, allocatable :: templist(:)
+!  integer, allocatable :: candidate_parents(:)
+!  integer :: num_candidates
+!
+!  allocate(templist(num_elems))
+!  allocate(candidate_parents(num_elems))
+!  candidate_parents = 0
+!  num_candidates = 0
+!
+!  ! Step 1: Get all elements downstream of ne_parent
+!  !call group_elem_by_parent(ne_parent, templist)
+!
+!  ! Step 2: Collect candidate cluster roots in orders 8–12
+!  do i = 1, num_elems
+!    ne = templist(i)
+!    if (ne /= 0) then
+!      ord = elem_ordrs(2, ne)
+!      !write
+!      if (ord >= 8 .and. ord <= 12 .and. elem_cnct(1,0,ne) > 0) then
+!        num_candidates = num_candidates + 1
+!        candidate_parents(num_candidates) = ne
+!      end if
+!    end if
+!  end do
+!
+!  ! Step 3: Loop through candidate cluster roots
+!  cluster_idx = 0
+!  do i = 1, num_candidates
+!    cluster_idx = cluster_idx + 1
+!    if (mod(cluster_idx, 4) == 0) then
+!      ! Constrict this cluster
+!      call group_elem_by_parent(candidate_parents(i), templist)
+!
+!      do j = 1, num_elems
+!        ne = templist(j)
+!        if (ne /= 0) then
+!          elem_field(ne_radius, ne) = 0.75_dp * elem_field(ne_radius, ne)
+!        end if
+!      end do
+!
+!      ! Optional: print info
+!      write(*,*) "Cluster", cluster_idx, "starting at ne=", candidate_parents(i), "constricted"
+!      write(*, *) 'size:', size(candidate_parents)
+!        pause
+!    end if
+!  end do
+!
+!  deallocate(templist)
+!  deallocate(candidate_parents)
+!end subroutine apply_cluster_constriction
+
+    subroutine apply_cluster_constriction(ne_parent)
+      ! Applies constriction to every 4th airway *cluster* in Horsfield orders 8–12
+
+      use arrays
+      integer, intent(in) :: ne_parent ! Dummy argument kept for compatibility
+      integer :: ne, i, j, ord, cluster_idx
+      integer, allocatable :: templist(:)
+      integer, allocatable :: candidate_parents(:)
+      integer :: num_candidates
+
+
+
+      allocate(templist(num_elems))
+      allocate(candidate_parents(num_elems))
+      candidate_parents = 0
+      num_candidates = 0
+
+      ! Step 1: Get all elements downstream of ne_parent
+      call group_elem_by_parent(ne_parent, templist)
+
+        ! Step 2: Collect candidate cluster roots in orders 8–12
+      do i = 1, num_elems
+          ne = templist(i)
+          if (ne /= 0) then
+            ord = elem_ordrs(2, ne)
+            if (ord >= 8 .and. ord <= 12) then
+              num_candidates = num_candidates + 1
+              candidate_parents(num_candidates) = ne
+            end if
+          end if
+      end do
+
+
+      ! Step 2: Loop through candidates and constrict every 4th cluster
+      cluster_idx = 0
+      do i = 1, num_candidates
+          if (mod(i, 4) == 0) then
+            cluster_idx = cluster_idx + 1  ! increment only when we actually apply constriction
+
+            call group_elem_by_parent(candidate_parents(i), templist)
+            do j = 1, num_elems
+              ne = templist(j)
+              if (ne /= 0) then
+                elem_field(ne_radius, ne) = 0.05_dp * elem_field(ne_radius, ne)
+              end if
+            end do
+
+            write(*,*) "Cluster", cluster_idx, "starting at ne=", candidate_parents(i), "constricted"
+          end if
+      end do
+
+
+      write(*, *) 'size:', num_candidates
+
+      deallocate(templist)
+      deallocate(candidate_parents)
+    end subroutine apply_cluster_constriction
+
+
+!!!#############################################################################
+
 end module geometry

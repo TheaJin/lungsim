@@ -163,7 +163,9 @@ contains
              ! modify driving muscle pressure by volume_target/sum_tidal
              ! this increases p_mus for volume_target>sum_tidal, and
              ! decreases p_mus for volume_target<sum_tidal
-             pmus_factor_in = pmus_factor_in * abs(volume_target/sum_tidal)
+
+              !!! tj - 27 mar 2025  - Preserve pressure, observe flow shift
+             !pmus_factor_in = pmus_factor_in * abs(volume_target/sum_tidal)
              pmus_factor_ex = pmus_factor_ex * abs(volume_target/sum_expid)
           endif
           sum_tidal = 0.0_dp !reset the tidal volume
@@ -210,6 +212,14 @@ contains
     enddo
     unit_field(nu_vent,:) = unit_field(nu_vt,:)/(Tinsp+Texpn)
     call sum_elem_field_from_periphery(ne_Vdot)
+
+    ! TJ - mar 27 2025 - Clip any negative flow to prevent backflow into distal elements
+    do ne = 1, num_elems
+      if (elem_field(ne_Vdot, ne) < 0.0_dp) then
+         elem_field(ne_Vdot, ne) = 0.0_dp
+      endif
+    enddo
+
     elem_field(ne_Vdot,1:num_elems) = &
          elem_field(ne_Vdot,1:num_elems)/elem_field(ne_Vdot,1)
 

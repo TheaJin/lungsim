@@ -584,6 +584,42 @@ contains
 !
 !###################################################################################
 !
+  subroutine group_elem_by_parent_c(ne_parent, elemlist_len, elemlist) bind(C, name="group_elem_by_parent_c")
+    use geometry, only: group_elem_by_parent
+    implicit none
+
+    integer,intent(in) :: ne_parent
+    integer,intent(in) :: elemlist_len
+    integer,intent(out) :: elemlist(elemlist_len)
+
+#if defined _WIN32 && defined __INTEL_COMPILER
+    call so_group_elem_by_parent(ne_parent, elemlist)
+#else
+    call group_elem_by_parent(ne_parent, elemlist)
+#endif
+
+  end subroutine group_elem_by_parent_c
+
+  !
+!###################################################################################
+!
+
+    subroutine apply_cluster_constriction_c(ne_parent) bind(C, name="apply_cluster_constriction_c")
+    use geometry, only: apply_cluster_constriction
+    implicit none
+
+    integer,intent(in) :: ne_parent
+
+#if defined _WIN32 && defined __INTEL_COMPILER
+    call so_apply_cluster_constriction_c(ne_parent)
+#else
+    call apply_cluster_constriction(ne_parent)
+#endif
+
+  end subroutine apply_cluster_constriction_c
+
+  !
+!###################################################################################
 
 end module geometry_c
 

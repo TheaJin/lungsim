@@ -155,61 +155,139 @@ contains
  end subroutine initialise_exchange
  
  !!!#########################################################################
+!
+!  subroutine assemble_transport_matrix(diffusion_coeff)
+!
+!    use indices
+!    use arrays,only: dp,elem_nodes,num_elems,sparsity_col,reduced_col,sparsity_row,&
+!      reduced_row, global_K, global_M, global_AA, global_BB, global_R,nonzeros_unreduced
+!    use geometry, only: volume_of_mesh
+!    use diagnostics, only: enter_exit
+!    implicit none
+!
+!    real(dp),intent(in) :: diffusion_coeff
+!
+!    integer :: i,j,ncol,ne,nentry,nrow
+!    real(dp) :: elem_K(2,2),elem_M(2,2),elem_R(2)
+!    logical :: found
+!    character(len=60) :: sub_name
+!
+!!!!................................................................
+!
+!    sub_name = 'assemble_transport_matrix'
+!    call enter_exit(sub_name,1)
+!
+!    global_K(1:nonzeros_unreduced) = 0.0_dp
+!    global_M(1:nonzeros_unreduced) = 0.0_dp
+!
+!    do ne=1,num_elems
+!       select case (model_type)
+!       case ('gas_mix')
+!          call element_gasmix(ne,elem_K,elem_M,elem_R,diffusion_coeff)
+!       case ('particle_transport')
+!          call element_particles(ne,elem_K,elem_M,elem_R)
+!        end select
+!       do i=1,2
+!          nrow = elem_nodes(i,ne)
+!          do j=1,2
+!             ncol = elem_nodes(j,ne)
+!             found=.false.
+!             nentry = sparsity_row(nrow) ! start check at start of row
+!             do while (.not.found)
+!                if(ncol.eq.sparsity_col(nentry))then
+!                   found = .true.
+!                else
+!                   nentry = nentry+1
+!                endif
+!             enddo
+!             global_K(nentry) = global_K(nentry) + elem_K(i,j)
+!             global_M(nentry) = global_M(nentry) + elem_M(i,j)
+!          enddo !j
+!       enddo !i
+!    enddo !noelem
+!
+!    call enter_exit(sub_name,2)
+!
+!  end subroutine assemble_transport_matrix
 
-  subroutine assemble_transport_matrix(diffusion_coeff)
+    subroutine assemble_transport_matrix(diffusion_coeff)
+        use indices
+        use arrays,only: dp,elem_nodes,num_elems,sparsity_col,sparsity_row,&
+            global_K, global_M, nonzeros_unreduced,num_nodes
+        use diagnostics, only: enter_exit
+        implicit none
 
-    use indices
-    use arrays,only: dp,elem_nodes,num_elems,sparsity_col,reduced_col,sparsity_row,&
-      reduced_row, global_K, global_M, global_AA, global_BB, global_R,nonzeros_unreduced
-    use geometry, only: volume_of_mesh
-    use diagnostics, only: enter_exit
-    implicit none
+        real(dp),intent(in) :: diffusion_coeff
+        integer :: i, j, ncol, ne, nentry, nrow, idx, insert_pos
+        real(dp) :: elem_K(2,2), elem_M(2,2), elem_R(2)
+        logical :: found_diag
+        character(len=60) :: sub_name
 
-    real(dp),intent(in) :: diffusion_coeff
+        sub_name = 'assemble_transport_matrix'
+        call enter_exit(sub_name,1)
 
-    integer :: i,j,ncol,ne,nentry,nrow
-    real(dp) :: elem_K(2,2),elem_M(2,2),elem_R(2)
-    logical :: found
-    character(len=60) :: sub_name
+        global_K(:) = 0.0_dp
+        global_M(:) = 0.0_dp
 
-!!!................................................................
+        do ne=1,num_elems
+            select case (model_type)
+            case ('gas_mix')
+                call element_gasmix(ne,elem_K,elem_M,elem_R,diffusion_coeff)
+            case ('particle_transport')
+                call element_particles(ne,elem_K,elem_M,elem_R)
+            end select
 
-    sub_name = 'assemble_transport_matrix'
-    call enter_exit(sub_name,1)
+            do i=1,2
+                nrow = elem_nodes(i,ne)
+                do j=1,2
+                    ncol = elem_nodes(j,ne)
+                    found_diag = .false.
+                    do nentry = sparsity_row(nrow), sparsity_row(nrow+1)-1
+                        if(ncol.eq.sparsity_col(nentry))then
+                            global_K(nentry) = global_K(nentry) + elem_K(i,j)
+                            global_M(nentry) = global_M(nentry) + elem_M(i,j)
+                            if(ncol == nrow) found_diag = .true.
+                            exit
+                        endif
+                    enddo
+                enddo
+            enddo
+        enddo
 
-    global_K(1:nonzeros_unreduced) = 0.0_dp
-    global_M(1:nonzeros_unreduced) = 0.0_dp
+        ! Explicitly verify and stop if diagonal missing:
+        do i = 1, num_nodes
+           found_diag = .false.
+           do nentry = sparsity_row(i), sparsity_row(i+1)-1
+              if(sparsity_col(nentry) == i) then
+                 found_diag = .true.
+                 exit
+              endif
+           enddo
+           if(.not. found_diag)then
+              ! Insert diagonal explicitly at assembly clearly:
+              insert_pos = sparsity_row(i+1)
 
-    do ne=1,num_elems
-       select case (model_type)
-       case ('gas_mix')
-          call element_gasmix(ne,elem_K,elem_M,elem_R,diffusion_coeff)
-       case ('particle_transport')
-          call element_particles(ne,elem_K,elem_M,elem_R)
-        end select
-       do i=1,2
-          nrow = elem_nodes(i,ne)
-          do j=1,2
-             ncol = elem_nodes(j,ne)
-             found=.false.
-             nentry = sparsity_row(nrow) ! start check at start of row
-             do while (.not.found)
-                if(ncol.eq.sparsity_col(nentry))then
-                   found = .true.
-                else
-                   nentry = nentry+1
-                endif
-             enddo
-             global_K(nentry) = global_K(nentry) + elem_K(i,j)
-             global_M(nentry) = global_M(nentry) + elem_M(i,j)
-          enddo !j
-       enddo !i
-    enddo !noelem
+              ! Shift arrays explicitly by 1 to insert diagonal
+              sparsity_col(insert_pos+1:NonZeros_unreduced+1) = sparsity_col(insert_pos:NonZeros_unreduced)
+              global_K(insert_pos+1:NonZeros_unreduced+1)     = global_K(insert_pos:NonZeros_unreduced)
+              global_M(insert_pos+1:NonZeros_unreduced+1)     = global_M(insert_pos:NonZeros_unreduced)
 
-    call enter_exit(sub_name,2)
+              ! Insert the missing diagonal explicitly
+              sparsity_col(insert_pos) = i
+              global_K(insert_pos)     = 1.0D-08
+              global_M(insert_pos)     = 1.0D-08
 
-  end subroutine assemble_transport_matrix
-  
+              NonZeros_unreduced = NonZeros_unreduced + 1
+              do idx = i+1, num_nodes+1
+                  sparsity_row(idx) = sparsity_row(idx)+1
+              enddo
+              print*, 'Explicitly inserted diagonal at node:', i
+           endif
+        enddo
+
+        call enter_exit(sub_name,2)
+    end subroutine assemble_transport_matrix
+
 !!!########################################################################
 
   subroutine intial_transport(initial_concentration,inlet_concentration,tp)
@@ -272,7 +350,8 @@ contains
          noffset_entry,noffset_row
     logical,intent(in) :: inspiration
 
-    integer :: i
+    integer :: idx, i,insert_pos
+    logical :: diag_found
 
     if(inspiration)then !remove first row and column (note: also for breath-hold)
 
@@ -303,10 +382,74 @@ contains
        noffset_row = 0
 
     endif
+!
+!    ! tj - 2025 mar 11 - fix diagonal missing
+!
+!    do i = 1, MatrixSize
+!       diag_found = .false.
+!       do idx = reduced_row(i), reduced_row(i+1)-1
+!          if (reduced_col(idx) == i) then
+!             diag_found = .true.
+!             exit
+!          endif
+!       enddo
+!       if (.not.diag_found) then
+!          write(*,'(A,I6)') 'Diagonal missing after reduction at row:', i
+!          ! Explicitly insert diagonal entry
+!          insert_pos = reduced_row(i+1)
+!
+!          ! Shift arrays to make room for diagonal
+!          reduced_col(insert_pos+1:NonZeros+1) = reduced_col(insert_pos:NonZeros)
+!          ! Insert diagonal entry explicitly
+!          reduced_col(insert_pos) = i
+!
+!          ! You might need to set corresponding matrix value (global_AA) explicitly:
+!          global_AA(insert_pos+1:NonZeros+1) = global_AA(insert_pos:NonZeros)
+!          global_AA(insert_pos) = 1.0D-08 ! small regularization value
+!
+!          ! Update counters and pointers
+!          NonZeros = NonZeros + 1
+!          do idx = i+1, MatrixSize+1
+!             reduced_row(idx) = reduced_row(idx) + 1
+!          enddo
+!
+!        ! Important: sort entries after insertion
+!           call sort_row_entries(reduced_row(i), reduced_row(i+1)-1, reduced_col, global_AA)
+!       endif
+!    enddo
 
   end subroutine reduce_transport_matrix
   
-  
+  !##########################################################3
+    subroutine sort_row_entries(row_start,row_end,reduced_col,global_AA)
+        implicit none
+      integer, intent(in) :: row_start, row_end
+      integer, intent(inout) :: reduced_col(:)
+      real(dp), intent(inout) :: global_AA(:)
+
+      integer :: i, temp_col
+      real(dp) :: temp_val
+      logical :: swapped
+
+        do
+            swapped = .false.
+            do i = row_start, row_end-1
+                if(reduced_col(i)>reduced_col(i+1))then
+                    ! Swap columns
+                    temp_col=reduced_col(i)
+                    reduced_col(i)=reduced_col(i+1)
+                    reduced_col(i+1)=temp_col
+                    ! Swap values
+                    temp_val=global_AA(i)
+                    global_AA(i)=global_AA(i+1)
+                    global_AA(i+1)=temp_val
+                    swapped=.true.
+                endif
+            enddo
+            if(.not.swapped) exit
+        enddo
+    end subroutine
+
 !
 !##############################################################################
 !

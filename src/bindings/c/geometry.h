@@ -32,5 +32,7 @@ SHO_PUBLIC void volume_of_mesh(double *volume_model, double *volume_tree);
 SHO_PUBLIC void write_elem_geometry_2d(const char *ELEMFILE);
 SHO_PUBLIC void write_geo_file(int ntype, const char *GEOFILE);
 SHO_PUBLIC void write_node_geometry_2d(const char *NODEFILE);
+SHO_PUBLIC void group_elem_by_parent(int ne_parent, int elemlist_len, int elemlist[]);
+SHO_PUBLIC void apply_cluster_constriction(int ne_parent);
 
 #endif /* AETHER_GEOMETRY_H */

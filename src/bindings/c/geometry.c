@@ -32,6 +32,9 @@ void volume_of_mesh_c(double *volume_model, double *volume_tree);
 void write_elem_geometry_2d_c(const char *ELEMFILE, int *filename_len);
 void write_geo_file_c(int *ntype, const char *GEOFILE, int *filename_len);
 void write_node_geometry_2d_c(const char *NODEFILE, int *filename_len);
+void group_elem_by_parent_c(int *ne_parent, int *elemlist_len, int elemlist[]);
+void apply_cluster_constriction_c(int *ne_parent);
+
 
 void add_mesh(const char *AIRWAY_MESHFILE)
 {
@@ -192,3 +195,12 @@ void write_node_geometry_2d(const char *NODEFILE)
   write_node_geometry_2d_c(NODEFILE, &filename_len);
 }
 
+void group_elem_by_parent(int ne_parent, int elemlist_len, int elemlist[])
+{
+  group_elem_by_parent_c(&ne_parent, &elemlist_len, elemlist);
+}
+
+void apply_cluster_constriction(int ne_parent)
+{
+    apply_cluster_constriction_c(&ne_parent);
+}
